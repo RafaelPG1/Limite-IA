@@ -46,13 +46,16 @@
     abrirHist: document.getElementById('abrir-historico'),
     hist: document.getElementById('historico'),
     histFechar: document.getElementById('hist-fechar'),
-    histTipo: document.getElementById('hist-tipo'),
-    histPeriodo: document.getElementById('hist-periodo'),
+    histNome: document.getElementById('hist-nome'),
+    histProjeto: document.getElementById('hist-projeto'),
     histTexto: document.getElementById('hist-texto'),
     histContagem: document.getElementById('hist-contagem'),
     histLista: document.getElementById('hist-lista'),
     histVazio: document.getElementById('hist-vazio'),
     histLimpar: document.getElementById('hist-limpar'),
+    conf: document.getElementById('confirmar-limpar'),
+    confCancelar: document.getElementById('conf-cancelar'),
+    confApagar: document.getElementById('conf-apagar'),
   };
 
   let armazenamento = null;
@@ -64,7 +67,7 @@
   let statusTravadoAte = 0; // um erro fica visível por um tempo, sem ser apagado por "Sincronizado"
   let migrado = false; // os registros que já existiam só neste aparelho já foram para a nuvem
   try { migrado = !!armazenamento && armazenamento.getItem(CHAVE_MIGRADO) === '1'; } catch (e) { migrado = false; }
-  let historico = (H && armazenamento) ? H.carregar(armazenamento) : [];
+  let historico = (H && armazenamento) ? H.podar(H.carregar(armazenamento), new Date()) : [];
   const jaAtingido = new Map(); // id -> estava verde na última conferência (para registrar a chegada)
   let ultimoExcluido = null; // { registro, indice } para o botão Desfazer
   let timerToast = null;
@@ -369,9 +372,23 @@
   /* ---------- Histórico ---------- */
   const ROTULO_TIPO = { criado: 'Criado', editado: 'Editado', excluido: 'Excluído', atingido: 'Horário atingido' };
 
+  // Apaga do histórico o que passou de 1 dia útil. Roda ao abrir, ao registrar e a cada minuto.
+  function podarHistorico() {
+    if (!H) return;
+    const nova = H.podar(historico, new Date());
+    if (nova === historico) return;
+    historico = nova;
+    if (armazenamento) H.salvar(armazenamento, historico);
+    if (el.hist.open) desenharHistorico();
+  }
+
   function registrar(tipo, reg, mudancas) {
     if (!H) return;
-    historico = H.adicionar(historico, { t: Date.now(), tipo: tipo, id: reg.id, nome: reg.nome, mudancas: mudancas || [] });
+    historico = H.podar(historico, new Date());
+    historico = H.adicionar(historico, {
+      t: Date.now(), tipo: tipo, id: reg.id, nome: reg.nome, projeto: reg.projeto, horario: reg.horario,
+      data: reg.data, estado: reg.estado, obs: reg.obs, mudancas: mudancas || [],
+    });
     if (armazenamento) H.salvar(armazenamento, historico);
     if (el.hist.open) desenharHistorico();
   }
@@ -386,7 +403,7 @@
   }
 
   function desenharHistorico() {
-    const filtrado = H.filtrar(historico, { tipo: el.histTipo.value, periodo: el.histPeriodo.value, texto: el.histTexto.value }, new Date());
+    const filtrado = H.filtrar(historico, { nome: el.histNome.value, projeto: el.histProjeto.value, texto: el.histTexto.value });
     el.histLista.textContent = '';
     filtrado.forEach(function (e) {
       const li = criar('li', 'hist-item');
@@ -395,6 +412,18 @@
       li.appendChild(etiqueta);
       li.appendChild(criar('span', 'hist-nome', e.nome));
       li.appendChild(criar('span', 'hist-quando', quandoTexto(e.t)));
+      // Como o registro estava: é nisso que Projeto e Buscar procuram, então fica à vista.
+      const resumo = [['projeto', e.projeto], ['horario', e.horario], ['data', e.data], ['estado', e.estado], ['obs', e.obs]]
+        .filter(function (par) { return par[1]; });
+      if (resumo.length) {
+        const p = criar('p', 'hist-resumo');
+        resumo.forEach(function (par, i) {
+          if (i) p.appendChild(document.createTextNode(' · '));
+          p.appendChild(criar('b', null, H.ROTULO_CAMPO[par[0]] + ': '));
+          p.appendChild(document.createTextNode(valorDoHistorico(par[0], par[1])));
+        });
+        li.appendChild(p);
+      }
       if (e.mudancas.length) {
         const ul = criar('ul', 'hist-mudancas');
         e.mudancas.forEach(function (m) {
@@ -405,9 +434,20 @@
         });
         li.appendChild(ul);
       }
+      const apagar = criar('button', 'botao botao-sutil hist-apagar');
+      apagar.type = 'button';
+      apagar.setAttribute('aria-label', 'Apagar esta entrada: ' + ROTULO_TIPO[e.tipo] + ' ' + e.nome);
+      apagar.innerHTML = ICONES.excluir;
+      apagar.addEventListener('click', function () {
+        historico = H.remover(historico, e);
+        if (armazenamento) H.salvar(armazenamento, historico);
+        desenharHistorico();
+        if (!historico.length) el.histTexto.focus();
+      });
+      li.appendChild(apagar);
       el.histLista.appendChild(li);
     });
-    const filtrando = el.histTipo.value !== 'todos' || el.histPeriodo.value !== 'tudo' || el.histTexto.value.trim() !== '';
+    const filtrando = el.histNome.value.trim() !== '' || el.histProjeto.value.trim() !== '' || el.histTexto.value.trim() !== '';
     el.histContagem.textContent = historico.length
       ? (filtrando ? filtrado.length + ' de ' + historico.length + ' entradas' : historico.length + (historico.length === 1 ? ' entrada' : ' entradas'))
       : '';
@@ -417,6 +457,7 @@
   }
 
   function abrirHistorico() {
+    podarHistorico();
     desenharHistorico();
     if (typeof el.hist.showModal === 'function') el.hist.showModal(); else el.hist.setAttribute('open', '');
     el.histTexto.focus();
@@ -432,14 +473,25 @@
     el.histFechar.addEventListener('click', fecharHistorico);
     // Clique fora da janela (no fundo escuro) fecha.
     el.hist.addEventListener('click', function (ev) { if (ev.target === el.hist) fecharHistorico(); });
-    [el.histTipo, el.histPeriodo].forEach(function (c) { c.addEventListener('change', desenharHistorico); });
-    el.histTexto.addEventListener('input', desenharHistorico);
+    [el.histNome, el.histProjeto, el.histTexto].forEach(function (c) { c.addEventListener('input', desenharHistorico); });
+    // Limpar tudo pede confirmação numa janela própria.
     el.histLimpar.addEventListener('click', function () {
-      if (!window.confirm('Apagar todo o histórico deste aparelho? Os registros não são afetados.')) return;
+      if (typeof el.conf.showModal === 'function') el.conf.showModal(); else el.conf.setAttribute('open', '');
+      el.confCancelar.focus();
+    });
+    function fecharConfirmacao() {
+      if (typeof el.conf.close === 'function') el.conf.close(); else el.conf.removeAttribute('open');
+    }
+    el.confCancelar.addEventListener('click', function () { fecharConfirmacao(); el.histLimpar.focus(); });
+    el.conf.addEventListener('click', function (ev) { if (ev.target === el.conf) fecharConfirmacao(); });
+    el.confApagar.addEventListener('click', function () {
       historico = [];
       if (armazenamento) H.salvar(armazenamento, historico);
+      fecharConfirmacao();
       desenharHistorico();
+      el.histTexto.focus();
     });
+    setInterval(podarHistorico, 60000);
   } else {
     el.abrirHist.hidden = true;
   }

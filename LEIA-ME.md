@@ -31,7 +31,11 @@ Não precisa de servidor, internet nem instalação.
 - **Valor que não existe** (horário 25, dia 31/11): aparece um aviso no campo e o registro não é salvo, para nada ser descartado sem você ver.
 - **Observações:** campo opcional. Só aparece na tabela, em letra pequena sob o nome, nos registros em que você escreveu algo. Sem observação, nada é mostrado.
 - **Editar:** clique em Editar na linha. `Enter` salva, `Esc` cancela. Dá para editar a qualquer momento.
-- **Histórico:** botão **Histórico** no topo abre uma janela com tudo que aconteceu: criado, editado (mostra o que mudou, ex.: `Horário: 19:00 → 20:00`), excluído e horário atingido. Filtros por **tipo**, **período** (hoje, 7 ou 30 dias) e **busca** por nome ou pelo que mudou. `Esc`, o X ou clicar fora fecham. "Limpar histórico" apaga só o histórico, nunca os registros.
+- **Histórico:** botão **Histórico** no topo abre uma janela com o que aconteceu: criado, editado (mostra o que mudou, ex.: `Horário: 19:00 → 20:00`), excluído e horário atingido. Cada entrada guarda uma cópia de como o registro estava (projeto, horário, data, estado, observações). Três campos de filtro, que funcionam juntos:
+  - **Nome:** só procura no nome.
+  - **Projeto:** só procura no projeto.
+  - **Buscar:** procura em qualquer canto: nome, projeto, estado, observações, horário, data, tipo (`excluído`, `criado`...), o que mudou e o dia/hora em que aconteceu. Com várias palavras, todas precisam aparecer (`loja pendente`). Ignora acento e maiúscula.
+  A lixeira de cada entrada apaga só aquela; **Limpar histórico** apaga todas, depois de uma janela de confirmação. Os registros da tabela nunca são afetados. `Esc`, o X ou clicar fora fecham.
 - **Excluir:** clique em Excluir. Um aviso aparece por 7 segundos com o botão Desfazer.
 - **Verde:** quando o relógio do seu dispositivo chega ao horário do registro, a linha fica verde e aparece "Atingido". O texto do Estado nunca é alterado pela cor.
 - **Sem horário:** a linha nunca fica verde. Uma data sozinha (sem horário) só é exibida, não destaca.
@@ -73,7 +77,7 @@ A chave em `firebase-config.js` é pública por natureza do Firebase; não coloq
 
 ## Comportamentos que você precisa saber
 
-- **Histórico é por aparelho:** fica só no navegador de cada aparelho (máx. 500 entradas, as mais antigas saem) e **não sincroniza** pela nuvem. Registra o que você faz neste aparelho, não o que foi feito em outro. "Horário atingido" só é anotado com a página aberta no momento em que o horário chega. Desfazer uma exclusão remove a entrada dela.
+- **Histórico é por aparelho e dura 1 dia útil:** cada entrada some sozinha 1 dia útil depois de criada (segunda a sexta; sábado e domingo não contam, feriados também não): criada na sexta às 15h, some na segunda às 15h. Fica só no navegador de cada aparelho e **não sincroniza** pela nuvem. Registra o que você faz neste aparelho. "Horário atingido" só é anotado com a página aberta no momento em que o horário chega (e repete a cada dia para registros só com horário). Desfazer uma exclusão remove a entrada dela. Para mudar o prazo, `DIAS_UTEIS` no começo de `historico.js`.
 - **Onde os dados ficam:** com a nuvem ligada, no Firestore (e uma cópia no aparelho, que funciona sem internet). Sem a nuvem (`firebase-config.js` com `null`), só no navegador (`localStorage`) e outro aparelho não enxerga nada.
 - **Horário sem data:** fica verde a partir daquela hora e **volta ao normal à meia-noite**, valendo de novo no dia seguinte. Se quiser que fique verde e permaneça, preencha a data.
 - **Data só com o dia:** `5` significa dia 5 do **mês atual**. Se esse dia já passou, o registro fica verde na hora (se tiver horário). Para o mês seguinte, digite o mês (`5/11`).
@@ -96,7 +100,7 @@ A chave em `firebase-config.js` é pública por natureza do Firebase; não coloq
 node --test testes.js testes-historico.js
 ```
 
-**Resultado esperado:** no final, `# pass 47` e `# fail 0`.
+**Resultado esperado:** no final, `# pass 51` e `# fail 0`.
 
 **Erros comuns:**
 - `node não é reconhecido` / `command not found`: o Node.js não está instalado, ou o terminal foi aberto antes da instalação. Instale e abra um terminal novo.

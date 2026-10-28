@@ -1,12 +1,15 @@
 /*
  * historico.js — regras do histórico (sem tela, para poder testar).
  *
- * Cada entrada: { t: milissegundos, tipo, id, nome, mudancas }
+ * Cada entrada: { t: milissegundos, tipo, id, nome, projeto, horario, data, estado, obs, mudancas }
+ *   nome...obs: como o registro estava naquele momento (é o que a busca enxerga)
  *   tipo: 'criado' | 'editado' | 'excluido' | 'atingido'
  *   mudancas: só em 'editado' — lista de { campo, de, para }
  *
- * O histórico fica só neste aparelho (localStorage), com no máximo 500 entradas;
- * as mais antigas saem primeiro. A lista é guardada da mais nova para a mais antiga.
+ * O histórico fica só neste aparelho (localStorage), com no máximo 500 entradas.
+ * Cada entrada é apagada sozinha depois de 1 dia útil (segunda a sexta; sábado e
+ * domingo não contam, feriados também não são considerados): criada na sexta às 15h,
+ * vence na segunda às 15h. A lista é guardada da mais nova para a mais antiga.
  */
 (function (raiz, fabrica) {
   if (typeof module === 'object' && module.exports) module.exports = fabrica();
@@ -16,6 +19,7 @@
 
   var CHAVE = 'registros:historico:v1';
   var MAXIMO = 500;
+  var DIAS_UTEIS = 1; // quanto tempo cada entrada vive
   var TIPOS = ['criado', 'editado', 'excluido', 'atingido'];
   var CAMPOS = ['nome', 'projeto', 'horario', 'data', 'estado', 'obs'];
   var ROTULO_CAMPO = { nome: 'Nome', projeto: 'Projeto', horario: 'Horário', data: 'Data', estado: 'Estado', obs: 'Observações' };
@@ -28,7 +32,36 @@
     var mudancas = Array.isArray(e.mudancas) ? e.mudancas.filter(function (m) {
       return m && CAMPOS.indexOf(m.campo) !== -1;
     }).map(function (m) { return { campo: m.campo, de: texto(m.de), para: texto(m.para) }; }) : [];
-    return { t: e.t, tipo: e.tipo, id: texto(e.id), nome: texto(e.nome).slice(0, 80), mudancas: mudancas };
+    return {
+      t: e.t, tipo: e.tipo, id: texto(e.id),
+      nome: texto(e.nome).slice(0, 80), projeto: texto(e.projeto).slice(0, 80),
+      horario: texto(e.horario).slice(0, 5), data: texto(e.data).slice(0, 10),
+      estado: texto(e.estado).slice(0, 80), obs: texto(e.obs).slice(0, 200),
+      mudancas: mudancas,
+    };
+  }
+
+  // Momento em que uma entrada criada em t deixa de valer: t + DIAS_UTEIS dias úteis.
+  function venceEm(t) {
+    var d = new Date(t);
+    var falta = DIAS_UTEIS;
+    while (falta > 0) {
+      d.setDate(d.getDate() + 1);
+      var dia = d.getDay(); // 0 domingo, 6 sábado
+      if (dia !== 0 && dia !== 6) falta--;
+    }
+    return d.getTime();
+  }
+
+  // Tira as entradas vencidas. Devolve a mesma lista se nada venceu.
+  function podar(lista, agora) {
+    var limite = agora.getTime();
+    var vivas = lista.filter(function (e) { return venceEm(e.t) > limite; });
+    return vivas.length === lista.length ? lista : vivas;
+  }
+
+  function remover(lista, entrada) {
+    return lista.filter(function (e) { return e !== entrada; });
   }
 
   function sanear(lista) {
@@ -61,25 +94,49 @@
     return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   }
 
-  function inicioDoDia(agora) { return new Date(agora.getFullYear(), agora.getMonth(), agora.getDate()).getTime(); }
+  var ROTULO_TIPO = { criado: 'Criado', editado: 'Editado', excluido: 'Excluído', atingido: 'Horário atingido' };
 
-  // filtros: { tipo: 'todos'|tipo, periodo: 'tudo'|'hoje'|'7d'|'30d', texto: '' }
-  function filtrar(lista, filtros, agora) {
+  function dois(n) { return (n < 10 ? '0' : '') + n; }
+
+  // "28/10/2026, 11:03"
+  function quando(t) {
+    var d = new Date(t);
+    return dois(d.getDate()) + '/' + dois(d.getMonth() + 1) + '/' + d.getFullYear() + ', ' + dois(d.getHours()) + ':' + dois(d.getMinutes());
+  }
+
+  // "2026-10-27" -> "27/10/2026 27/10" (assim "27/10" também acha)
+  function dataParaBusca(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+    return m ? m[3] + '/' + m[2] + '/' + m[1] + ' ' + m[3] + '/' + m[2] : (iso || '');
+  }
+
+  // Todo o texto que a busca livre enxerga numa entrada.
+  function palheiro(e) {
+    var partes = [ROTULO_TIPO[e.tipo], e.nome, e.projeto, e.horario, e.estado, e.obs, dataParaBusca(e.data), quando(e.t)];
+    e.mudancas.forEach(function (m) {
+      partes.push(ROTULO_CAMPO[m.campo], m.campo === 'data' ? dataParaBusca(m.de) : m.de, m.campo === 'data' ? dataParaBusca(m.para) : m.para);
+    });
+    return semAcento(partes.join(' | '));
+  }
+
+  function contem(valor, busca) {
+    var b = semAcento((busca || '').trim());
+    return !b || semAcento(valor || '').indexOf(b) !== -1;
+  }
+
+  // filtros: { nome, projeto, texto }. Todos juntos (E). Em "texto", cada palavra
+  // digitada precisa aparecer em algum lugar da entrada (a ordem não importa).
+  function filtrar(lista, filtros) {
     var f = filtros || {};
-    var desde = 0;
-    if (f.periodo === 'hoje') desde = inicioDoDia(agora);
-    else if (f.periodo === '7d') desde = inicioDoDia(agora) - 6 * 86400000;
-    else if (f.periodo === '30d') desde = inicioDoDia(agora) - 29 * 86400000;
-    var busca = semAcento((f.texto || '').trim());
+    var palavras = semAcento((f.texto || '').trim()).split(/\s+/).filter(Boolean);
     return lista.filter(function (e) {
-      if (f.tipo && f.tipo !== 'todos' && e.tipo !== f.tipo) return false;
-      if (e.t < desde) return false;
-      if (!busca) return true;
-      var palheiro = e.nome + ' ' + e.mudancas.map(function (m) { return ROTULO_CAMPO[m.campo] + ' ' + m.de + ' ' + m.para; }).join(' ');
-      return semAcento(palheiro).indexOf(busca) !== -1;
+      if (!contem(e.nome, f.nome) || !contem(e.projeto, f.projeto)) return false;
+      if (!palavras.length) return true;
+      var p = palheiro(e);
+      return palavras.every(function (w) { return p.indexOf(w) !== -1; });
     });
   }
 
-  return { CHAVE: CHAVE, MAXIMO: MAXIMO, TIPOS: TIPOS, ROTULO_CAMPO: ROTULO_CAMPO,
-    sanear: sanear, carregar: carregar, salvar: salvar, adicionar: adicionar, diferencas: diferencas, filtrar: filtrar };
+  return { CHAVE: CHAVE, MAXIMO: MAXIMO, TIPOS: TIPOS, ROTULO_CAMPO: ROTULO_CAMPO, ROTULO_TIPO: ROTULO_TIPO, quando: quando,
+    DIAS_UTEIS: DIAS_UTEIS, venceEm: venceEm, podar: podar, remover: remover, sanear: sanear, carregar: carregar, salvar: salvar, adicionar: adicionar, diferencas: diferencas, filtrar: filtrar };
 });

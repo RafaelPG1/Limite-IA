@@ -112,35 +112,33 @@
     </div>
     <div class="hist-filtros">
       <div class="campo">
-        <label for="hist-tipo">Tipo</label>
-        <select id="hist-tipo">
-          <option value="todos">Todos</option>
-          <option value="criado">Criado</option>
-          <option value="editado">Editado</option>
-          <option value="excluido">Excluído</option>
-          <option value="atingido">Horário atingido</option>
-        </select>
+        <label for="hist-nome">Nome</label>
+        <input id="hist-nome" type="text" autocomplete="off" placeholder="Filtrar por nome">
       </div>
       <div class="campo">
-        <label for="hist-periodo">Período</label>
-        <select id="hist-periodo">
-          <option value="tudo">Tudo</option>
-          <option value="hoje">Hoje</option>
-          <option value="7d">Últimos 7 dias</option>
-          <option value="30d">Últimos 30 dias</option>
-        </select>
+        <label for="hist-projeto">Projeto</label>
+        <input id="hist-projeto" type="text" autocomplete="off" placeholder="Filtrar por projeto">
       </div>
       <div class="campo hist-busca">
         <label for="hist-texto">Buscar</label>
-        <input id="hist-texto" type="text" autocomplete="off" placeholder="Nome ou o que mudou">
+        <input id="hist-texto" type="text" autocomplete="off" placeholder="Qualquer termo: estado, obs, horário, data, mudança…">
       </div>
     </div>
     <p id="hist-contagem" class="hist-contagem" role="status"></p>
     <ol id="hist-lista" class="hist-lista"></ol>
     <p id="hist-vazio" class="hist-vazio" hidden></p>
     <div class="modal-rodape">
-      <span class="hist-nota">Guardado só neste aparelho · até 500 entradas</span>
+      <span class="hist-nota">Só neste aparelho · cada entrada some após 1 dia útil</span>
       <button type="button" id="hist-limpar" class="botao botao-sutil botao-perigo">Limpar histórico</button>
+    </div>
+  </dialog>
+
+  <dialog id="confirmar-limpar" class="modal modal-pequeno" aria-labelledby="conf-titulo" aria-describedby="conf-texto">
+    <div class="modal-topo"><h2 id="conf-titulo">Limpar histórico?</h2></div>
+    <p id="conf-texto" class="conf-texto">Todas as entradas do histórico serão apagadas deste aparelho. Os registros da tabela não são afetados.</p>
+    <div class="modal-rodape modal-rodape-direita">
+      <button type="button" id="conf-cancelar" class="botao botao-sutil">Cancelar</button>
+      <button type="button" id="conf-apagar" class="botao botao-perigo-cheio">Apagar tudo</button>
     </div>
   </dialog>
 
