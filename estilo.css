@@ -23,6 +23,10 @@
   --aviso-tinta: #5c4300;
   --av-tinta-l: 32%;
   --av-fundo-a: 0.16;
+  --livre-fundo: #0f7a45;
+  --livre-tinta: #ffffff;
+  --azul-fundo: #1d5fd6;
+  --azul-tinta: #ffffff;
   --raio: 16px;
   --raio-campo: 11px;
   --sombra: 0 1px 2px rgba(20, 21, 43, 0.05), 0 12px 32px -8px rgba(20, 21, 43, 0.12);
@@ -56,6 +60,10 @@
     --aviso-tinta: #f3d98b;
     --av-tinta-l: 78%;
     --av-fundo-a: 0.2;
+    --livre-fundo: #34d38c;
+    --livre-tinta: #04210f;
+    --azul-fundo: #7ab0ff;
+    --azul-tinta: #06193a;
     --sombra: 0 1px 2px rgba(0, 0, 0, 0.4), 0 16px 40px -12px rgba(0, 0, 0, 0.55);
     --sombra-linha: 0 1px 2px rgba(0, 0, 0, 0.25);
   }
@@ -378,6 +386,13 @@ td.horario { font-variant-numeric: tabular-nums; font-weight: 600; }
 
 tbody tr:not(.atingido):not(.editando):hover td { background: var(--superficie-2); }
 
+/* Estados com cor própria: LIVRE (verde) e OK (azul). Só colorem o rótulo; o texto fica como foi digitado.
+   Sólidos de propósito, para não se confundir com o verde claro da linha de horário atingido. */
+tbody tr .chip.chip-livre,
+tbody tr.atingido .chip.chip-livre { background: var(--livre-fundo); color: var(--livre-tinta); font-weight: 700; }
+tbody tr .chip.chip-ok,
+tbody tr.atingido .chip.chip-ok { background: var(--azul-fundo); color: var(--azul-tinta); font-weight: 700; }
+
 /* Destaque verde: só indicador visual; o texto do estado não é alterado. */
 tbody tr.atingido td {
   background: var(--verde-fundo);
@@ -421,6 +436,10 @@ tr.editando td {
 tr.editando input { min-height: 2.5rem; padding: 0.375rem 0.625rem; }
 tr.editando td.acoes { white-space: nowrap; }
 tr.editando .erro { margin-top: 0.25rem; }
+.campo-edicao { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
+.rotulo-edicao { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.01em; color: var(--tinta-2); }
+.rotulo-edicao .opcional { font-weight: 500; }
+tr.editando td.acoes { padding-top: 1.875rem; } /* alinha os botões com os campos, abaixo dos rótulos */
 
 .acoes-grupo { display: inline-flex; gap: 0.25rem; }
 
@@ -548,7 +567,9 @@ tr.chegou td { animation: pulso-verde 1.6s var(--ease); }
   }
   td.acoes { display: block; text-align: left; padding-bottom: 0.75rem; }
   td.acoes::before { content: none; }
-  tr.editando td { align-items: start; }
+  tr.editando td { align-items: start; grid-template-columns: minmax(0, 1fr); }
+  tr.editando td::before { content: none; }
+  tr.editando td.acoes { padding-top: 0.5rem; }
 }
 
 @keyframes pulso-verde-linha {

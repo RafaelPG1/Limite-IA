@@ -24,6 +24,35 @@
 
   function dois(n) { return String(n).padStart(2, '0'); }
 
+  function semAcento(s) { return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+
+  // A primeira letra do nome é sempre maiúscula ("ana" vira "Ana"). Se começar com
+  // número ou símbolo, fica como está. O resto do nome não é mexido ("Ra2019", "João da Silva").
+  function capitalizarNome(nome) {
+    if (!nome) return '';
+    const primeiro = String.fromCodePoint(nome.codePointAt(0));
+    return primeiro.toLocaleUpperCase('pt-BR') + nome.slice(primeiro.length);
+  }
+
+  // Dois nomes são "o mesmo" se só diferem em maiúscula, acento ou espaços: "ana", "Aná" e " ANA " são iguais.
+  function chaveNome(nome) {
+    return semAcento(nome || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  }
+
+  // Estado com significado especial. Compara o texto inteiro, sem olhar maiúscula,
+  // acento ou espaço sobrando: "livre", " LIVRE " e "Livre" valem igual; "não livre" não.
+  //   LIVRE -> liberado (verde)      OK -> não liberado, mas tem trabalho lá (azul)
+  // Os dois vão para o topo da lista e são sempre guardados e mostrados em maiúsculo.
+  function tipoEstado(estado) {
+    const t = chaveNome(estado);
+    return t === 'livre' ? 'livre' : t === 'ok' ? 'ok' : '';
+  }
+
+  function normalizarEstado(estado) {
+    const tipo = tipoEstado(estado);
+    return tipo ? tipo.toUpperCase() : estado;
+  }
+
   /*
    * Aceita "19" (= 19:00), "9" (= 09:00), "19:30", "9:05" e "17:00:30".
    * Qualquer outra coisa (25, 17:3, abc) vira "" (sem horário).
@@ -90,11 +119,11 @@
   function montar(dados, id, agora) {
     const registro = {
       id: id,
-      nome: texto(dados && dados.nome),
+      nome: capitalizarNome(texto(dados && dados.nome)),
       projeto: texto(dados && dados.projeto),
       horario: normalizarHorario(dados && dados.horario),
       data: normalizarData(dados && dados.data, agora),
-      estado: texto(dados && dados.estado),
+      estado: normalizarEstado(texto(dados && dados.estado)),
       obs: texto(dados && dados.obs, LIMITE_OBS),
     };
     // "ordem" mantém cada registro no mesmo lugar em todos os aparelhos.
@@ -108,9 +137,21 @@
    * Só o nome é obrigatório; horário e data podem ficar vazios, mas se forem
    * preenchidos precisam ser válidos (assim nada digitado é descartado em silêncio).
    */
-  function erros(dados, agora) {
+  // "registros" (opcional) é a lista atual: serve para recusar nome repetido.
+  // "idAtual" é o registro que está sendo editado (ele não conta como repetido de si mesmo);
+  // se o nome dele não mudou, não é cobrado de novo (dados antigos com nome repetido seguem editáveis).
+  function erros(dados, agora, registros, idAtual) {
     const lista = [];
-    if (!texto(dados && dados.nome)) lista.push('nome-obrigatorio');
+    const nome = texto(dados && dados.nome);
+    if (!nome) lista.push('nome-obrigatorio');
+    else if (Array.isArray(registros)) {
+      const chave = chaveNome(nome);
+      const atual = registros.find(function (r) { return r.id === idAtual; });
+      const mudou = !atual || chaveNome(atual.nome) !== chave;
+      if (mudou && registros.some(function (r) { return r.id !== idAtual && chaveNome(r.nome) === chave; })) {
+        lista.push('nome-duplicado');
+      }
+    }
     const h = dados && typeof dados.horario === 'string' ? dados.horario.trim() : '';
     if (h && !normalizarHorario(h)) lista.push('horario-invalido');
     const d = dados && typeof dados.data === 'string' ? dados.data.trim() : '';
@@ -118,8 +159,8 @@
     return lista;
   }
 
-  function criarRegistro(dados, novoId, agora) {
-    const problemas = erros(dados, agora);
+  function criarRegistro(dados, novoId, agora, registros) {
+    const problemas = erros(dados, agora, registros);
     if (problemas.length) return { ok: false, erro: problemas[0], erros: problemas };
     return { ok: true, registro: montar(dados, (novoId || gerarId)(), agora) };
   }
@@ -128,7 +169,7 @@
   function editarRegistro(lista, id, dados, agora) {
     const indice = lista.findIndex(function (r) { return r.id === id; });
     if (indice === -1) return { ok: false, erro: 'nao-encontrado', erros: ['nao-encontrado'] };
-    const problemas = erros(dados, agora);
+    const problemas = erros(dados, agora, lista, id);
     if (problemas.length) return { ok: false, erro: problemas[0], erros: problemas };
     const registro = montar(dados, id, agora);
     if (typeof lista[indice].ordem === 'number') registro.ordem = lista[indice].ordem;
@@ -146,7 +187,7 @@
   }
 
   function restaurarRegistro(lista, removido, indice) {
-    if (!removido || lista.some(function (r) { return r.id === removido.id; })) return lista;
+    if (!removido || lista.some(function (r) { return r.id === removido.id || chaveNome(r.nome) === chaveNome(removido.nome); })) return lista;
     const nova = lista.slice();
     const posicao = Math.max(0, Math.min(indice, nova.length));
     nova.splice(posicao, 0, removido);
@@ -216,13 +257,21 @@
     }
   }
 
+  const coletor = new Intl.Collator('pt-BR', { sensitivity: 'base', numeric: true });
+
+  // Ordem de exibição: primeiro os de estado LIVRE ou OK; depois (e dentro de cada grupo) alfabética
+  // pelo nome, sem diferenciar maiúscula e acento ("Ágata" fica entre "Abel" e "Bia").
+  // Empate: a ordem de criação e, por fim, o id (igual em todo aparelho).
   function comparar(a, b) {
+    const g = (tipoEstado(a.estado) ? 0 : 1) - (tipoEstado(b.estado) ? 0 : 1);
+    if (g) return g;
+    const n = coletor.compare(a.nome || '', b.nome || '');
+    if (n) return n;
     const d = (a.ordem || 0) - (b.ordem || 0);
     if (d) return d;
     return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
   }
 
-  // Ordem de exibição: a de criação; empate decidido pelo id (igual em todo aparelho).
   function ordenar(lista) {
     return lista.slice().sort(comparar);
   }
@@ -251,6 +300,9 @@
     carregar: carregar,
     sanearLista: sanearLista,
     ordenar: ordenar,
+    tipoEstado: tipoEstado,
+    capitalizarNome: capitalizarNome,
+    chaveNome: chaveNome,
     garantirOrdem: garantirOrdem,
   };
 });

@@ -293,13 +293,36 @@ test('cor automática: horário só com a hora funciona (19 -> 19:00)', () => {
 });
 
 // ---------- ordem e limpeza de dados vindos de fora ----------
-test('ordem: edição preserva a ordem; ordenar usa ordem e desempata por id', () => {
+test('ordem: edição preserva o campo ordem; ordenar não altera a lista original', () => {
   const lista = [{ id: 'b', nome: 'B', ordem: 2 }, { id: 'a', nome: 'A', ordem: 2 }, { id: 'c', nome: 'C', ordem: 1 }]
     .map((r) => Object.assign({ projeto: '', horario: '', data: '', estado: '', obs: '' }, r));
-  assert.deepEqual(R.ordenar(lista).map((r) => r.id), ['c', 'a', 'b']);
   const e = R.editarRegistro(lista, 'b', { nome: 'B2' });
-  assert.equal(e.lista[0].ordem, 2, 'edição não muda a posição');
-  assert.equal(lista[0].nome, 'B', 'ordenar/editar não alteram a lista original');
+  assert.equal(e.lista[0].ordem, 2, 'edição não muda a ordem de criação');
+  R.ordenar(lista);
+  assert.equal(lista[0].nome, 'B', 'ordenar não altera a lista original');
+});
+
+test('estado: LIVRE e OK são reconhecidos sem olhar maiúscula, acento ou espaço sobrando', () => {
+  ['livre', 'LIVRE', ' Livre ', 'lívre'].forEach((v) => assert.equal(R.tipoEstado(v), 'livre', v));
+  ['ok', 'OK', ' Ok ', 'oK'].forEach((v) => assert.equal(R.tipoEstado(v), 'ok', v));
+  ['', 'não livre', 'livre agora', 'ok!', 'okay', 'pendente', undefined, null].forEach((v) => assert.equal(R.tipoEstado(v), '', String(v)));
+});
+
+test('ordenar: alfabética pelo nome, ignorando maiúscula e acento; números na ordem natural', () => {
+  const mk = (id, nome, estado, ordem) => ({ id, nome, estado: estado || '', ordem: ordem || 1 });
+  const lista = [mk('1', 'bia'), mk('2', 'Ágata'), mk('3', 'Abel'), mk('4', 'Zé'), mk('5', 'cris'), mk('6', 'Item 10'), mk('7', 'Item 2')];
+  assert.deepEqual(R.ordenar(lista).map((r) => r.nome), ['Abel', 'Ágata', 'bia', 'cris', 'Item 2', 'Item 10', 'Zé']);
+});
+
+test('ordenar: estado LIVRE ou OK vai para cima do alfabeto; os demais seguem o alfabeto', () => {
+  const mk = (id, nome, estado) => ({ id, nome, estado, ordem: 1 });
+  const lista = [mk('1', 'Ana', 'livre'), mk('2', 'Zeca', 'OK'), mk('3', 'Bia', ''), mk('4', 'Caio', 'ok'), mk('5', 'Abel', 'Pendente'), mk('6', 'Duda', 'LIVRE')];
+  assert.deepEqual(R.ordenar(lista).map((r) => r.nome), ['Ana', 'Caio', 'Duda', 'Zeca', 'Abel', 'Bia']);
+});
+
+test('ordenar: nomes iguais desempatam pela ordem de criação e depois pelo id (estável entre aparelhos)', () => {
+  const mk = (id, ordem) => ({ id, nome: 'Ana', estado: '', ordem });
+  assert.deepEqual(R.ordenar([mk('b', 2), mk('a', 2), mk('c', 1)]).map((r) => r.id), ['c', 'a', 'b']);
 });
 
 test('ordem: registros antigos sem ordem ganham uma pela posição; os que têm ficam como estão', () => {
@@ -322,4 +345,71 @@ test('sanear: ignora lixo, exige nome, corrige campos e evita ids repetidos', ()
   assert.equal(r[2].ordem, undefined, 'ordem que não é número é descartada');
   assert.deepEqual(R.sanearLista('texto'), []);
   assert.deepEqual(R.sanearLista(undefined), []);
+});
+
+// ---------- nome único, nome com maiúscula, estado LIVRE/OK padronizado ----------
+const um = (dados, lista) => R.criarRegistro(dados, () => 'id' + Math.random(), HOJE, lista);
+
+test('nome: a primeira letra é sempre maiúscula; o resto não é mexido', () => {
+  assert.equal(um({ nome: 'ana' }).registro.nome, 'Ana');
+  assert.equal(um({ nome: '  joão da silva ' }).registro.nome, 'João da silva');
+  assert.equal(um({ nome: 'ébano' }).registro.nome, 'Ébano');
+  assert.equal(um({ nome: 'Ra2019' }).registro.nome, 'Ra2019');
+  assert.equal(um({ nome: '2019x' }).registro.nome, '2019x', 'começando por número não muda');
+  assert.equal(um({ nome: 'iPhone' }).registro.nome, 'IPhone');
+  assert.equal(R.capitalizarNome(''), '');
+});
+
+test('nome: não pode repetir (ignora maiúscula, acento e espaços); projeto, horário e estado podem', () => {
+  const a = um({ nome: 'Ana', projeto: 'P', horario: '19', estado: 'Pendente' }).registro;
+  const lista = [a];
+  ['Ana', 'ana', ' ANA ', 'Aná'].forEach((n) => {
+    const r = um({ nome: n }, lista);
+    assert.equal(r.ok, false, n);
+    assert.deepEqual(r.erros, ['nome-duplicado']);
+  });
+  assert.equal(um({ nome: 'Ana Maria' }, lista).ok, true, 'parecido não é igual');
+  assert.equal(um({ nome: 'Bia', projeto: 'P', horario: '19', estado: 'Pendente' }, lista).ok, true, 'o resto pode repetir');
+  assert.equal(um({ nome: 'Ana' }).ok, true, 'sem lista, não há como comparar');
+});
+
+test('nome: na edição, o próprio registro não conta; trocar para o nome de outro é recusado', () => {
+  const lista = [um({ nome: 'Ana' }).registro, um({ nome: 'Bia' }).registro];
+  const [a, b] = lista;
+  assert.equal(R.editarRegistro(lista, a.id, { nome: 'ana', projeto: 'X' }, HOJE).ok, true, 'mesmo nome (até em minúscula) no próprio registro');
+  const r = R.editarRegistro(lista, a.id, { nome: 'bia' }, HOJE);
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.erros, ['nome-duplicado']);
+  assert.equal(R.editarRegistro(lista, b.id, { nome: 'Carla' }, HOJE).ok, true);
+});
+
+test('nome: dados antigos com nome repetido continuam editáveis se o nome não mudar', () => {
+  const lista = [{ id: 'x', nome: 'Ana' }, { id: 'y', nome: 'Ana' }].map((r) => Object.assign({ projeto: '', horario: '', data: '', estado: '', obs: '' }, r));
+  assert.equal(R.editarRegistro(lista, 'x', { nome: 'Ana', obs: 'ok' }, HOJE).ok, true);
+  assert.equal(R.editarRegistro(lista, 'x', { nome: 'Ana', estado: 'livre' }, HOJE).ok, true);
+});
+
+test('nome: desfazer exclusão não recria um nome que já foi usado depois', () => {
+  const a = um({ nome: 'Ana' }).registro;
+  const r = R.removerRegistro([a], a.id);
+  const outra = um({ nome: 'ana' }, r.lista).registro;
+  const volta = R.restaurarRegistro([outra], r.removido, 0);
+  assert.deepEqual(volta, [outra], 'não restaura: já existe uma Ana');
+});
+
+test('estado: livre e ok viram LIVRE e OK, de qualquer jeito que forem digitados; outros ficam iguais', () => {
+  assert.equal(um({ nome: 'A', estado: 'livre' }).registro.estado, 'LIVRE');
+  assert.equal(um({ nome: 'A', estado: ' Livre ' }).registro.estado, 'LIVRE');
+  assert.equal(um({ nome: 'A', estado: 'lÍvre' }).registro.estado, 'LIVRE');
+  assert.equal(um({ nome: 'A', estado: 'oK' }).registro.estado, 'OK');
+  assert.equal(um({ nome: 'A', estado: 'ok sim' }).registro.estado, 'ok sim');
+  assert.equal(um({ nome: 'A', estado: 'não livre' }).registro.estado, 'não livre');
+  assert.equal(um({ nome: 'A', estado: 'Pendente' }).registro.estado, 'Pendente');
+  const lista = [um({ nome: 'A' }).registro];
+  assert.equal(R.editarRegistro(lista, lista[0].id, { nome: 'A', estado: 'ok' }, HOJE).registro.estado, 'OK');
+});
+
+test('dados antigos: ao carregar, nome vira com maiúscula e livre/ok viram LIVRE/OK', () => {
+  const r = R.sanearLista([{ id: 'a', nome: 'ana', estado: 'livre' }, { id: 'b', nome: 'bia', estado: 'Ok' }, { id: 'c', nome: 'caio', estado: 'ok?' }]);
+  assert.deepEqual(r.map((x) => [x.nome, x.estado]), [['Ana', 'LIVRE'], ['Bia', 'OK'], ['Caio', 'ok?']]);
 });

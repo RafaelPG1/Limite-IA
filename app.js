@@ -149,7 +149,8 @@
   function celulaEstado(valor) {
     const td = celula('estado', 'Estado');
     if (valor) {
-      td.appendChild(criar('span', 'chip', valor));
+      const tipo = R.tipoEstado(valor); // LIVRE = verde, OK = azul; o texto digitado não muda
+      td.appendChild(criar('span', 'chip' + (tipo ? ' chip-' + tipo : ''), valor));
     } else {
       td.appendChild(criar('span', 'vazio-traco', '—'));
       td.appendChild(criar('span', 'so-leitor', 'sem valor'));
@@ -217,7 +218,21 @@
     data: 'Data inválida. Use o dia (27) ou dia/mês (27/10).',
   };
 
-  function entradaTexto(nome, valor, ariaRotulo, limite, placeholder) {
+  let contadorCampos = 0;
+
+  // Campo de edição com o rótulo sempre visível em cima (e "(opcional)" quando for o caso).
+  function comRotulo(rotulo, opcional, input) {
+    input.id = 'ed-' + (++contadorCampos);
+    const caixa = criar('div', 'campo-edicao');
+    const l = criar('label', 'rotulo-edicao', rotulo);
+    l.htmlFor = input.id;
+    if (opcional) l.appendChild(criar('span', 'opcional', ' (opcional)'));
+    caixa.appendChild(l);
+    caixa.appendChild(input);
+    return caixa;
+  }
+
+  function entradaTexto(nome, valor, limite, placeholder) {
     const input = criar('input');
     input.type = 'text';
     input.name = nome;
@@ -225,12 +240,11 @@
     input.maxLength = limite;
     input.autocomplete = 'off';
     if (placeholder) input.placeholder = placeholder;
-    input.setAttribute('aria-label', ariaRotulo);
     return input;
   }
 
-  // Campo de edição com máscara, seguido da sua mensagem de erro.
-  function entradaMascarada(td, nome, valor, tipoMascara, placeholder, tamanho, ariaRotulo) {
+  // Campo de edição com máscara (horário ou data), com seu rótulo e a mensagem de erro.
+  function entradaMascarada(td, nome, rotulo, opcional, valor, tipoMascara, placeholder, tamanho) {
     const input = criar('input');
     input.type = 'text';
     input.name = nome;
@@ -240,29 +254,17 @@
     input.inputMode = 'numeric';
     input.autocomplete = 'off';
     input.dataset.mascara = tipoMascara;
-    input.setAttribute('aria-label', ariaRotulo);
-    td.appendChild(input);
+    td.appendChild(comRotulo(rotulo, opcional, input));
     td.appendChild(mensagemErro(nome));
   }
 
   function mensagemErro(campo) {
     const p = criar('p', 'erro', MENSAGEM[campo]);
     p.dataset.campo = campo;
+    p.dataset.padrao = MENSAGEM[campo];
     p.hidden = true;
     p.setAttribute('role', 'alert');
     return p;
-  }
-
-  function campoEdicao(classe, rotulo, tipo, valor, ariaRotulo) {
-    const td = celula(classe, rotulo);
-    const input = criar('input');
-    input.type = tipo;
-    input.value = valor;
-    input.name = classe;
-    if (tipo === 'text') input.maxLength = R.LIMITE;
-    input.setAttribute('aria-label', ariaRotulo);
-    td.appendChild(input);
-    return td;
   }
 
   function montarLinhaEdicao(reg) {
@@ -271,23 +273,29 @@
 
     const tdNome = celula('nome', 'Nome');
     const pilhaNome = criar('div', 'pilha');
-    pilhaNome.appendChild(entradaTexto('nome', reg.nome, 'Nome', R.LIMITE, ''));
+    const inputNome = entradaTexto('nome', reg.nome, R.LIMITE, '');
+    inputNome.autocapitalize = 'sentences';
+    pilhaNome.appendChild(comRotulo('Nome', false, inputNome));
     pilhaNome.appendChild(mensagemErro('nome'));
-    pilhaNome.appendChild(entradaTexto('obs', reg.obs, 'Observações (opcional)', R.LIMITE_OBS, 'Observações'));
+    pilhaNome.appendChild(comRotulo('Observações', true, entradaTexto('obs', reg.obs, R.LIMITE_OBS, '')));
     tdNome.appendChild(pilhaNome);
     tr.appendChild(tdNome);
 
-    tr.appendChild(campoEdicao('projeto', 'Projeto', 'text', reg.projeto, 'Projeto'));
+    const tdProjeto = celula('projeto', 'Projeto');
+    tdProjeto.appendChild(comRotulo('Projeto', true, entradaTexto('projeto', reg.projeto, R.LIMITE, '')));
+    tr.appendChild(tdProjeto);
 
     // Horário e data (ambos opcionais) dividem a mesma coluna, um embaixo do outro.
     const tdHorario = celula('horario', 'Horário');
     const pilha = criar('div', 'pilha');
-    entradaMascarada(pilha, 'horario', reg.horario, 'hora', '19 ou 19:30', 5, 'Horário');
-    entradaMascarada(pilha, 'data', R.dataParaTela(reg.data, new Date()), 'data', '27 ou 27/10', 10, 'Data (opcional)');
+    entradaMascarada(pilha, 'horario', 'Horário', true, reg.horario, 'hora', '19 ou 19:30', 5);
+    entradaMascarada(pilha, 'data', 'Data', true, R.dataParaTela(reg.data, new Date()), 'data', '27 ou 27/10', 10);
     tdHorario.appendChild(pilha);
     tr.appendChild(tdHorario);
 
-    tr.appendChild(campoEdicao('estado', 'Estado', 'text', reg.estado, 'Estado'));
+    const tdEstado = celula('estado', 'Estado');
+    tdEstado.appendChild(comRotulo('Estado', true, entradaTexto('estado', reg.estado, R.LIMITE, '')));
+    tr.appendChild(tdEstado);
 
     const tdAcoes = celula('acoes', 'Ações');
     const grupo = criar('div', 'acoes-grupo');
@@ -527,7 +535,8 @@
   }
 
   /* ---------- Adicionar ---------- */
-  const CAMPO_DO_ERRO = { 'nome-obrigatorio': 'nome', 'horario-invalido': 'horario', 'data-invalida': 'data' };
+  const CAMPO_DO_ERRO = { 'nome-obrigatorio': 'nome', 'nome-duplicado': 'nome', 'horario-invalido': 'horario', 'data-invalida': 'data' };
+  const TEXTO_DUPLICADO = 'Já existe um registro com esse nome. Use outro nome.';
 
   // Mostra (ou limpa) o erro de cada campo dentro do formulário ou da linha em edição.
   function mostrarErros(escopo, codigos) {
@@ -538,11 +547,27 @@
       const msg = escopo.querySelector('.erro[data-campo="' + campo + '"]');
       if (!input || !msg) return;
       const tem = comErro.indexOf(campo) !== -1;
+      msg.textContent = campo === 'nome' && codigos.indexOf('nome-duplicado') !== -1 ? TEXTO_DUPLICADO : (msg.dataset.padrao || msg.textContent);
       msg.hidden = !tem;
       input.setAttribute('aria-invalid', tem ? 'true' : 'false');
       if (tem && !primeiro) primeiro = input;
     });
     if (primeiro) primeiro.focus();
+  }
+
+  // A lista é sempre exibida em ordem alfabética (OK em cima); um registro novo entra no lugar certo.
+  function registrarNovo(registro) {
+    aplicarLista(R.ordenar(lista.concat(registro)));
+    persistir();
+    enviarGravar(registro);
+    registrar('criado', registro);
+    jaAtingido.set(registro.id, R.horarioAtingido(registro.horario, new Date(), registro.data));
+    mostrarLinha(registro.id);
+  }
+
+  function mostrarLinha(id) {
+    const tr = el.corpo.querySelector('tr[data-id="' + id + '"]');
+    if (tr && tr.scrollIntoView) tr.scrollIntoView({ block: 'nearest' });
   }
 
   el.form.addEventListener('submit', function (ev) {
@@ -554,20 +579,14 @@
       data: el.dataNova.value,
       estado: el.estado.value,
       obs: el.obs.value,
-    });
+    }, undefined, undefined, lista);
     if (!res.ok) {
       mostrarErros(el.form, res.erros);
       return;
     }
     mostrarErros(el.form, []);
     res.registro.ordem = proximaOrdem();
-    lista = lista.concat(res.registro);
-    persistir();
-    enviarGravar(res.registro);
-    registrar('criado', res.registro);
-    jaAtingido.set(res.registro.id, R.horarioAtingido(res.registro.horario, new Date(), res.registro.data));
-    el.corpo.appendChild(entrando(montarLinha(res.registro)));
-    atualizarVazio();
+    registrarNovo(res.registro);
     el.form.reset();
     el.nome.focus();
   });
@@ -612,6 +631,10 @@
   // Ao sair do campo, mostra o valor que será guardado: 19 vira 19:00, 27 vira 27/10.
   document.addEventListener('focusout', function (ev) {
     const campo = ev.target;
+    // "livre" e "ok" (de qualquer jeito) passam a LIVRE e OK assim que você sai do campo.
+    if (campo && campo.tagName === 'INPUT' && campo.name === 'estado' && R.tipoEstado(campo.value)) {
+      campo.value = campo.value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').toUpperCase();
+    }
     if (!campo || campo.tagName !== 'INPUT' || !campo.dataset.mascara || !campo.value.trim()) return;
     if (campo.dataset.mascara === 'hora') {
       const h = R.normalizarHorario(campo.value);
@@ -627,6 +650,15 @@
   document.addEventListener('input', function (ev) {
     const campo = ev.target;
     if (!campo || campo.tagName !== 'INPUT') return;
+    // A primeira letra do nome é sempre maiúscula: minúscula não chega a ficar no campo.
+    if (campo.name === 'nome' && campo.value) {
+      const certo = R.capitalizarNome(campo.value);
+      if (certo !== campo.value) {
+        const ini = campo.selectionStart, fim = campo.selectionEnd;
+        campo.value = certo;
+        try { campo.setSelectionRange(ini, fim); } catch (e) { /* campo sem seleção */ }
+      }
+    }
     if (campo.dataset.mascara) {
       const formatado = mascara(campo.dataset.mascara, campo.value);
       if (formatado !== campo.value) campo.value = formatado;
@@ -673,8 +705,10 @@
     jaAtingido.set(res.registro.id, R.horarioAtingido(res.registro.horario, new Date(), res.registro.data));
     const nova = montarLinha(res.registro);
     tr.replaceWith(nova);
+    aplicarLista(R.ordenar(lista)); // nome ou estado podem ter mudado: reposiciona a linha
     atualizarResumo(new Date());
     nova.querySelector('[data-acao="editar"]').focus();
+    mostrarLinha(res.registro.id);
   }
 
   function cancelarEdicao(tr) {
@@ -736,7 +770,13 @@
   el.desfazer.addEventListener('click', function () {
     if (!ultimoExcluido) return;
     const item = ultimoExcluido;
-    lista = R.ordenar(R.restaurarRegistro(lista, item.registro, item.indice));
+    const restaurada = R.restaurarRegistro(lista, item.registro, item.indice);
+    if (restaurada === lista) { // já existe outro registro com esse nome: desfazer duplicaria
+      esconderToast();
+      mensagem('Não foi possível desfazer: já existe um registro chamado ' + item.registro.nome + '.');
+      return;
+    }
+    lista = R.ordenar(restaurada);
     persistir();
     enviarGravar(item.registro);
     if (H) { // desfazer = a exclusão não aconteceu: tira a entrada dela do histórico
