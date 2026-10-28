@@ -8,6 +8,7 @@
   'use strict';
 
   const R = window.Registros;
+  const H = window.Historico;
   const CHAVE_MIGRADO = 'registros:nuvem-migrado';
 
   const ICONES = {
@@ -45,6 +46,16 @@
     exportar: document.getElementById('exportar'),
     importar: document.getElementById('importar'),
     arquivo: document.getElementById('arquivo-importar'),
+    abrirHist: document.getElementById('abrir-historico'),
+    hist: document.getElementById('historico'),
+    histFechar: document.getElementById('hist-fechar'),
+    histTipo: document.getElementById('hist-tipo'),
+    histPeriodo: document.getElementById('hist-periodo'),
+    histTexto: document.getElementById('hist-texto'),
+    histContagem: document.getElementById('hist-contagem'),
+    histLista: document.getElementById('hist-lista'),
+    histVazio: document.getElementById('hist-vazio'),
+    histLimpar: document.getElementById('hist-limpar'),
   };
 
   let armazenamento = null;
@@ -56,6 +67,8 @@
   let statusTravadoAte = 0; // um erro fica visível por um tempo, sem ser apagado por "Sincronizado"
   let migrado = false; // os registros que já existiam só neste aparelho já foram para a nuvem
   try { migrado = !!armazenamento && armazenamento.getItem(CHAVE_MIGRADO) === '1'; } catch (e) { migrado = false; }
+  let historico = (H && armazenamento) ? H.carregar(armazenamento) : [];
+  const jaAtingido = new Map(); // id -> estava verde na última conferência (para registrar a chegada)
   let ultimoExcluido = null; // { registro, indice } para o botão Desfazer
   let timerToast = null;
   let iniciado = false; // vira true depois da primeira desenhada da tela
@@ -356,6 +369,84 @@
     el.resAtingidos.textContent = atingidos === 1 ? '1 no horário' : atingidos + ' no horário';
   }
 
+  /* ---------- Histórico ---------- */
+  const ROTULO_TIPO = { criado: 'Criado', editado: 'Editado', excluido: 'Excluído', atingido: 'Horário atingido' };
+
+  function registrar(tipo, reg, mudancas) {
+    if (!H) return;
+    historico = H.adicionar(historico, { t: Date.now(), tipo: tipo, id: reg.id, nome: reg.nome, mudancas: mudancas || [] });
+    if (armazenamento) H.salvar(armazenamento, historico);
+    if (el.hist.open) desenharHistorico();
+  }
+
+  function valorDoHistorico(campo, v) {
+    if (!v) return '—';
+    return campo === 'data' ? R.dataParaTela(v, new Date()) : v;
+  }
+
+  function quandoTexto(t) {
+    return new Date(t).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function desenharHistorico() {
+    const filtrado = H.filtrar(historico, { tipo: el.histTipo.value, periodo: el.histPeriodo.value, texto: el.histTexto.value }, new Date());
+    el.histLista.textContent = '';
+    filtrado.forEach(function (e) {
+      const li = criar('li', 'hist-item');
+      const etiqueta = criar('span', 'hist-etiqueta', ROTULO_TIPO[e.tipo]);
+      etiqueta.dataset.tipo = e.tipo;
+      li.appendChild(etiqueta);
+      li.appendChild(criar('span', 'hist-nome', e.nome));
+      li.appendChild(criar('span', 'hist-quando', quandoTexto(e.t)));
+      if (e.mudancas.length) {
+        const ul = criar('ul', 'hist-mudancas');
+        e.mudancas.forEach(function (m) {
+          const item = criar('li');
+          item.appendChild(criar('b', null, H.ROTULO_CAMPO[m.campo] + ': '));
+          item.appendChild(document.createTextNode(valorDoHistorico(m.campo, m.de) + ' → ' + valorDoHistorico(m.campo, m.para)));
+          ul.appendChild(item);
+        });
+        li.appendChild(ul);
+      }
+      el.histLista.appendChild(li);
+    });
+    const filtrando = el.histTipo.value !== 'todos' || el.histPeriodo.value !== 'tudo' || el.histTexto.value.trim() !== '';
+    el.histContagem.textContent = historico.length
+      ? (filtrando ? filtrado.length + ' de ' + historico.length + ' entradas' : historico.length + (historico.length === 1 ? ' entrada' : ' entradas'))
+      : '';
+    el.histVazio.hidden = filtrado.length > 0;
+    el.histVazio.textContent = historico.length ? 'Nada encontrado com esses filtros.' : 'Ainda não há nada no histórico. Criar, editar e excluir registros aparece aqui.';
+    el.histLimpar.disabled = !historico.length;
+  }
+
+  function abrirHistorico() {
+    desenharHistorico();
+    if (typeof el.hist.showModal === 'function') el.hist.showModal(); else el.hist.setAttribute('open', '');
+    el.histTexto.focus();
+  }
+
+  function fecharHistorico() {
+    if (typeof el.hist.close === 'function') el.hist.close(); else el.hist.removeAttribute('open');
+    el.abrirHist.focus();
+  }
+
+  if (H) {
+    el.abrirHist.addEventListener('click', abrirHistorico);
+    el.histFechar.addEventListener('click', fecharHistorico);
+    // Clique fora da janela (no fundo escuro) fecha.
+    el.hist.addEventListener('click', function (ev) { if (ev.target === el.hist) fecharHistorico(); });
+    [el.histTipo, el.histPeriodo].forEach(function (c) { c.addEventListener('change', desenharHistorico); });
+    el.histTexto.addEventListener('input', desenharHistorico);
+    el.histLimpar.addEventListener('click', function () {
+      if (!window.confirm('Apagar todo o histórico deste aparelho? Os registros não são afetados.')) return;
+      historico = [];
+      if (armazenamento) H.salvar(armazenamento, historico);
+      desenharHistorico();
+    });
+  } else {
+    el.abrirHist.hidden = true;
+  }
+
   function achar(id) {
     return lista.find(function (r) { return r.id === id; });
   }
@@ -376,7 +467,12 @@
       const tr = linhas[i];
       if (tr.classList.contains('editando')) continue; // não mexe em quem está sendo editado
       const reg = achar(tr.dataset.id);
-      if (reg) aplicarDestaque(tr, R.horarioAtingido(reg.horario, agora, reg.data));
+      if (reg) {
+        const atingido = R.horarioAtingido(reg.horario, agora, reg.data);
+        aplicarDestaque(tr, atingido);
+        if (jaAtingido.get(reg.id) === false && atingido) registrar('atingido', reg);
+        jaAtingido.set(reg.id, atingido);
+      }
     }
     atualizarResumo(agora);
   }
@@ -419,6 +515,8 @@
     lista = lista.concat(res.registro);
     persistir();
     enviarGravar(res.registro);
+    registrar('criado', res.registro);
+    jaAtingido.set(res.registro.id, R.horarioAtingido(res.registro.horario, new Date(), res.registro.data));
     el.corpo.appendChild(entrando(montarLinha(res.registro)));
     atualizarVazio();
     el.form.reset();
@@ -505,6 +603,7 @@
   function salvarEdicao(tr) {
     const id = tr.dataset.id;
     const valor = function (nome) { return tr.querySelector('input[name="' + nome + '"]').value; };
+    const antes = achar(id);
     const res = R.editarRegistro(lista, id, {
       nome: valor('nome'),
       projeto: valor('projeto'),
@@ -520,6 +619,9 @@
     lista = res.lista;
     persistir();
     enviarGravar(res.registro);
+    const mudancas = H ? H.diferencas(antes, res.registro) : [];
+    if (mudancas.length) registrar('editado', res.registro, mudancas);
+    jaAtingido.set(res.registro.id, R.horarioAtingido(res.registro.horario, new Date(), res.registro.data));
     const nova = montarLinha(res.registro);
     tr.replaceWith(nova);
     atualizarResumo(new Date());
@@ -540,6 +642,8 @@
     lista = res.lista;
     persistir();
     enviarApagar(res.removido.id);
+    registrar('excluido', res.removido);
+    jaAtingido.delete(res.removido.id);
     tr.remove();
     atualizarVazio();
     ultimoExcluido = { registro: res.removido, indice: res.indice };
@@ -586,6 +690,13 @@
     lista = R.ordenar(R.restaurarRegistro(lista, item.registro, item.indice));
     persistir();
     enviarGravar(item.registro);
+    if (H) { // desfazer = a exclusão não aconteceu: tira a entrada dela do histórico
+      const i = historico.findIndex(function (e) { return e.tipo === 'excluido' && e.id === item.registro.id; });
+      if (i !== -1) {
+        historico = historico.slice(0, i).concat(historico.slice(i + 1));
+        if (armazenamento) H.salvar(armazenamento, historico);
+      }
+    }
     const posicao = lista.findIndex(function (r) { return r.id === item.registro.id; });
     el.corpo.insertBefore(entrando(montarLinha(item.registro)), el.corpo.children[posicao] || null);
     atualizarVazio();
