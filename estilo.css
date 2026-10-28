@@ -439,13 +439,13 @@ tr.chegou td { animation: pulso-verde 1.6s var(--ease); }
 
 /* ---------- Estado vazio ---------- */
 .vazio {
-  max-width: 28rem;
-  margin: 1rem auto 0;
+  margin: 0;
   padding: 2.5rem 1.5rem;
   text-align: center;
   background: var(--superficie);
-  border: 1px dashed var(--linha);
+  border: 1px solid var(--linha);
   border-radius: var(--raio);
+  box-shadow: var(--sombra);
 }
 .vazio[hidden] { display: none; }
 .vazio-icone {
