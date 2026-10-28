@@ -43,9 +43,6 @@
     sync: document.getElementById('sync'),
     syncTexto: document.getElementById('sync-texto'),
     msg: document.getElementById('msg'),
-    exportar: document.getElementById('exportar'),
-    importar: document.getElementById('importar'),
-    arquivo: document.getElementById('arquivo-importar'),
     abrirHist: document.getElementById('abrir-historico'),
     hist: document.getElementById('historico'),
     histFechar: document.getElementById('hist-fechar'),
@@ -704,52 +701,6 @@
     esconderToast();
   });
 
-  /* ---------- Backup (exportar e importar um arquivo) ---------- */
-  el.exportar.addEventListener('click', function () {
-    const agora = new Date();
-    const nome = 'registros-' + agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0') +
-      '-' + String(agora.getDate()).padStart(2, '0') + '.json';
-    const blob = new Blob([R.exportar(lista, agora)], { type: 'application/json' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = nome;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(function () { URL.revokeObjectURL(link.href); }, 2000);
-    mensagem('Backup salvo: ' + plural(lista.length, 'registro', 'registros') + '.');
-  });
-
-  el.importar.addEventListener('click', function () { el.arquivo.click(); });
-
-  const ERRO_IMPORTAR = {
-    'arquivo-invalido': 'Esse arquivo não é um backup válido (não é JSON).',
-    'formato-desconhecido': 'Esse arquivo não parece um backup de registros.',
-    'nenhum-registro-valido': 'O arquivo não tem nenhum registro válido.',
-  };
-
-  el.arquivo.addEventListener('change', function () {
-    const arquivo = el.arquivo.files && el.arquivo.files[0];
-    el.arquivo.value = ''; // permite escolher o mesmo arquivo de novo
-    if (!arquivo) return;
-    arquivo.text().then(function (conteudo) {
-      const res = R.importar(conteudo);
-      if (!res.ok) { mensagem(ERRO_IMPORTAR[res.erro] || 'Não foi possível ler o arquivo.'); return; }
-      if (res.registros.length === 0) { mensagem('O backup está vazio; nada foi importado.'); return; }
-      const pergunta = 'Importar ' + plural(res.registros.length, 'registro', 'registros') + '? ' +
-        'Os que têm o mesmo código serão atualizados e os outros acrescentados. Nada é apagado.';
-      if (!window.confirm(pergunta)) return;
-      const nova = R.mesclar(lista, res.registros);
-      const ids = new Set(res.registros.map(function (r) { return r.id; }));
-      const alterados = nova.filter(function (r) { return ids.has(r.id); });
-      aplicarLista(nova);
-      persistir();
-      if (nuvem) nuvem.gravarVarios(alterados);
-      mensagem(plural(alterados.length, 'registro importado', 'registros importados') + '.' +
-        (res.descartados ? ' ' + plural(res.descartados, 'item inválido ignorado', 'itens inválidos ignorados') + '.' : ''));
-    }).catch(function () { mensagem('Não foi possível ler o arquivo.'); });
-  });
-
   /* ---------- Nuvem (Firestore): só liga se o nuvem.js carregar ---------- */
   function definirStatus(tipo, texto) {
     el.sync.hidden = false;
@@ -760,7 +711,7 @@
   function statusPorMeta(meta) {
     if (Date.now() < statusTravadoAte) return;
     if (meta.doCache && !jaConectou) definirStatus('espera', 'Conectando à nuvem…');
-    else if (meta.doCache) definirStatus('aviso', 'Sem conexão. As alterações serão enviadas quando voltar.');
+    else if (meta.doCache) definirStatus('aviso', 'Sem conexão. Alterações ficam salvas aqui e seguem quando voltar. Com internet ok, confira se um bloqueador de anúncios está bloqueando o Firebase.');
     else if (meta.pendente) definirStatus('espera', 'Enviando alterações…');
     else definirStatus('ok', 'Sincronizado');
   }
@@ -806,7 +757,7 @@
       });
       setTimeout(function () {
         if (!jaConectou && nuvem && Date.now() >= statusTravadoAte) {
-          definirStatus('aviso', 'Sem conexão. As alterações serão enviadas quando voltar.');
+          definirStatus('aviso', 'Sem conexão. Alterações ficam salvas aqui e seguem quando voltar. Com internet ok, confira se um bloqueador de anúncios está bloqueando o Firebase.');
         }
       }, 10000);
     },

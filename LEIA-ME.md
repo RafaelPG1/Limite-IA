@@ -61,13 +61,13 @@ Abra o endereço no computador e no celular. Um registro criado num aparece no o
 
 - **Conectando / Sincronizado:** normal.
 - **Enviando:** gravação esperando confirmação do servidor.
-- **Sem conexão:** funciona e guarda; envia quando a internet voltar.
+- **Sem conexão:** funciona e guarda; envia quando a internet voltar. Se a internet está boa e o aviso não some, quase sempre é **extensão bloqueando o Firebase** (bloqueador de anúncios, Brave Shields, privacidade). Teste numa janela anônima sem extensões ou desative a extensão neste site; no console aparece `ERR_BLOCKED_BY_CLIENT`.
 - **Erro de permissão:** as regras não foram publicadas, ou rejeitaram o registro.
 - **Nuvem indisponível:** o Firebase não carregou; o site segue só neste aparelho.
 
 ### Segurança: leia
 
-Sem login, **quem descobrir o endereço do site consegue ler e apagar os registros**. Não guarde nada sensível. Use **Exportar** (rodapé) de vez em quando para baixar um backup `.json`; **Importar** restaura (confirma antes e não duplica).
+Sem login, **quem descobrir o endereço do site consegue ler e apagar os registros**. Não guarde nada sensível.
 
 A chave em `firebase-config.js` é pública por natureza do Firebase; não coloque senhas ou tokens ali. As regras não foram testadas contra o Firebase real.
 

@@ -185,7 +185,7 @@
   }
 
   /*
-   * Limpa uma lista vinda de fora (armazenamento, nuvem ou arquivo de backup):
+   * Limpa uma lista vinda de fora (armazenamento ou nuvem):
    * ignora o que não é registro, exige nome, corrige campos e evita ids repetidos.
    */
   function sanearLista(bruta) {
@@ -234,39 +234,6 @@
     });
   }
 
-  function exportar(lista, agora) {
-    return JSON.stringify({
-      versao: 1,
-      exportadoEm: (agora || new Date()).toISOString(),
-      registros: lista,
-    }, null, 2);
-  }
-
-  // Lê um arquivo de backup. Aceita o formato do exportar() ou uma lista simples.
-  function importar(textoJson) {
-    let dados;
-    try { dados = JSON.parse(textoJson); } catch (e) { return { ok: false, erro: 'arquivo-invalido' }; }
-    const bruta = Array.isArray(dados) ? dados : (dados && Array.isArray(dados.registros) ? dados.registros : null);
-    if (!bruta) return { ok: false, erro: 'formato-desconhecido' };
-    const registros = sanearLista(bruta);
-    if (bruta.length > 0 && registros.length === 0) return { ok: false, erro: 'nenhum-registro-valido' };
-    return { ok: true, registros: registros, descartados: bruta.length - registros.length };
-  }
-
-  // Junta o backup à lista atual: mesmo id atualiza, id novo é adicionado.
-  function mesclar(lista, importados) {
-    const mapa = new Map(lista.map(function (r) { return [r.id, r]; }));
-    let proxima = lista.reduce(function (m, r) { return Math.max(m, r.ordem || 0); }, 0);
-    importados.forEach(function (r) {
-      const existente = mapa.get(r.id);
-      const novo = Object.assign({}, r);
-      if (existente && typeof existente.ordem === 'number') novo.ordem = existente.ordem;
-      else if (typeof novo.ordem !== 'number') novo.ordem = ++proxima;
-      mapa.set(r.id, novo);
-    });
-    return ordenar(Array.from(mapa.values()));
-  }
-
   return {
     CHAVE: CHAVE,
     LIMITE: LIMITE,
@@ -285,8 +252,5 @@
     sanearLista: sanearLista,
     ordenar: ordenar,
     garantirOrdem: garantirOrdem,
-    exportar: exportar,
-    importar: importar,
-    mesclar: mesclar,
   };
 });

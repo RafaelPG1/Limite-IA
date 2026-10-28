@@ -565,7 +565,7 @@ tr.chegou td { animation: pulso-verde 1.6s var(--ease); }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
-/* ---------- Status da sincronização e backup ---------- */
+/* ---------- Status da sincronização ---------- */
 .sync {
   display: flex;
   align-items: center;
@@ -585,16 +585,6 @@ tr.chegou td { animation: pulso-verde 1.6s var(--ease); }
 .sync[data-tipo="erro"] .sync-ponto { background: var(--perigo); }
 
 .aviso-info { background: var(--acento-suave); color: var(--tinta); }
-
-.rodape {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  margin-top: 2rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--linha);
-}
-.rodape-rotulo { margin-right: 0.5rem; color: var(--tinta-2); font-size: 0.8125rem; font-weight: 700; }
 
 /* ---------- Histórico (janela) ---------- */
 .botao-contorno {

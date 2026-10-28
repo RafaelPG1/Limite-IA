@@ -10,7 +10,7 @@
 //  - ler, gravar e apagar não exigem login.
 //
 // ATENÇÃO: sem login, quem descobrir o endereço do site consegue ler e apagar os registros.
-// Não guarde nada sensível aqui e use o botão "Exportar backup" de vez em quando.
+// Não guarde nada sensível aqui.
 
 rules_version = '2';
 service cloud.firestore {

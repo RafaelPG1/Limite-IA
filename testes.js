@@ -292,7 +292,7 @@ test('cor automática: horário só com a hora funciona (19 -> 19:00)', () => {
   assert.equal(R.horarioAtingido('19', new Date(2026, 9, 27, 19, 0)), true, 'aceita direto também');
 });
 
-// ---------- ordem, backup e limpeza de dados vindos de fora ----------
+// ---------- ordem e limpeza de dados vindos de fora ----------
 test('ordem: edição preserva a ordem; ordenar usa ordem e desempata por id', () => {
   const lista = [{ id: 'b', nome: 'B', ordem: 2 }, { id: 'a', nome: 'A', ordem: 2 }, { id: 'c', nome: 'C', ordem: 1 }]
     .map((r) => Object.assign({ projeto: '', horario: '', data: '', estado: '', obs: '' }, r));
@@ -322,38 +322,4 @@ test('sanear: ignora lixo, exige nome, corrige campos e evita ids repetidos', ()
   assert.equal(r[2].ordem, undefined, 'ordem que não é número é descartada');
   assert.deepEqual(R.sanearLista('texto'), []);
   assert.deepEqual(R.sanearLista(undefined), []);
-});
-
-test('backup: exportar e importar devolvem os mesmos registros', () => {
-  const ids = contador();
-  const lista = [
-    R.criarRegistro({ nome: 'A', projeto: 'P', horario: '19', data: '27/11', obs: 'ligar' }, ids, HOJE).registro,
-    R.criarRegistro({ nome: 'B' }, ids, HOJE).registro,
-  ].map((r, i) => Object.assign(r, { ordem: i + 1 }));
-  const arquivo = R.exportar(lista, HOJE);
-  assert.ok(arquivo.includes('"versao": 1'));
-  const volta = R.importar(arquivo);
-  assert.equal(volta.ok, true);
-  assert.deepEqual(volta.registros, lista);
-  assert.equal(volta.descartados, 0);
-});
-
-test('backup: aceita lista simples e recusa arquivo estragado ou sem registros válidos', () => {
-  assert.equal(R.importar('[{"nome":"A"}]').ok, true);
-  assert.equal(R.importar('{"registros":[{"nome":"A"},{"nome":""}]}').descartados, 1);
-  assert.equal(R.importar('[]').ok, true, 'backup vazio é válido');
-  assert.deepEqual(R.importar('isto não é json'), { ok: false, erro: 'arquivo-invalido' });
-  assert.deepEqual(R.importar('{"a":1}'), { ok: false, erro: 'formato-desconhecido' });
-  assert.deepEqual(R.importar('[{"nome":""},3]'), { ok: false, erro: 'nenhum-registro-valido' });
-});
-
-test('backup: mesclar atualiza o mesmo id, acrescenta o novo e mantém a posição', () => {
-  const base = (id, nome, ordem) => ({ id, nome, projeto: '', horario: '', data: '', estado: '', obs: '', ordem });
-  const atual = [base('a', 'A', 1), base('b', 'B', 2)];
-  const r = R.mesclar(atual, [base('b', 'B-NOVO', 50), base('c', 'C', undefined)].map((x) => { if (x.ordem === undefined) delete x.ordem; return x; }));
-  assert.deepEqual(r.map((x) => x.id), ['a', 'b', 'c']);
-  assert.equal(r[1].nome, 'B-NOVO');
-  assert.equal(r[1].ordem, 2, 'mantém a posição que já tinha');
-  assert.equal(r[2].ordem, 3, 'novo sem ordem vai para o fim');
-  assert.equal(atual[1].nome, 'B', 'lista original intacta');
 });
