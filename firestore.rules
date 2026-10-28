@@ -1,0 +1,41 @@
+// firestore.rules — regras para o banco do site Registros.
+//
+// ESTE ARQUIVO É SÓ PARA VOCÊ COPIAR: nada foi publicado.
+// Console do Firebase > Firestore Database > aba Regras > cole tudo > Publicar.
+//
+// O que estas regras fazem:
+//  - só existe a coleção "registros"; qualquer outra coisa fica bloqueada;
+//  - cada registro precisa ter exatamente os 7 campos esperados, com tipo e tamanho certos
+//    (assim ninguém grava lixo nem textos enormes);
+//  - ler, gravar e apagar não exigem login.
+//
+// ATENÇÃO: sem login, quem descobrir o endereço do site consegue ler e apagar os registros.
+// Não guarde nada sensível aqui e use o botão "Exportar backup" de vez em quando.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function textoAte(d, campo, max) {
+      return d[campo] is string && d[campo].size() <= max;
+    }
+
+    function registroValido(d) {
+      return d.keys().hasOnly(['nome', 'projeto', 'horario', 'data', 'estado', 'obs', 'ordem'])
+        && d.keys().hasAll(['nome', 'projeto', 'horario', 'data', 'estado', 'obs', 'ordem'])
+        && d.nome is string && d.nome.size() > 0 && d.nome.size() <= 80
+        && textoAte(d, 'projeto', 80)
+        && textoAte(d, 'horario', 5)
+        && textoAte(d, 'data', 10)
+        && textoAte(d, 'estado', 80)
+        && textoAte(d, 'obs', 200)
+        && d.ordem is number;
+    }
+
+    match /registros/{id} {
+      allow read: if true;
+      allow create, update: if id.size() <= 64 && registroValido(request.resource.data);
+      allow delete: if true;
+    }
+  }
+}

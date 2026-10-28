@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Registros</title>
+  <!-- Fonte opcional: sem internet o navegador usa a fonte do sistema e tudo funciona igual. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+  <main class="pagina">
+    <header class="topo">
+      <div class="titulo">
+        <h1>Registros</h1>
+        <p class="resumo" id="resumo" hidden>
+          <span class="pilula" id="res-total"></span>
+          <span class="pilula pilula-verde" id="res-atingidos" hidden></span>
+        </p>
+        <p class="sync" id="sync" role="status" hidden><span class="sync-ponto" aria-hidden="true"></span><span id="sync-texto"></span></p>
+      </div>
+      <div class="relogio-bloco">
+        <p class="relogio"><time id="relogio">--:--</time><span id="segundos" class="segundos">:--</span></p>
+        <p class="data" id="data"></p>
+      </div>
+    </header>
+
+    <p id="aviso" class="aviso" role="alert" hidden>
+      Não foi possível salvar neste navegador. Os registros serão perdidos quando você fechar a página.
+    </p>
+
+    <p id="msg" class="aviso aviso-info" role="status" hidden></p>
+
+    <form id="form-novo" class="novo" novalidate>
+      <div class="campo campo-nome">
+        <label for="novo-nome">Nome</label>
+        <input id="novo-nome" name="nome" type="text" maxlength="80" autocomplete="off" required aria-describedby="erro-novo">
+        <p id="erro-novo" class="erro" data-campo="nome" role="alert" hidden>Informe o nome para adicionar o registro.</p>
+      </div>
+      <div class="campo">
+        <label for="novo-projeto">Projeto <span class="opcional">(opcional)</span></label>
+        <input id="novo-projeto" name="projeto" type="text" maxlength="80" autocomplete="off">
+      </div>
+      <div class="campo campo-horario">
+        <label for="novo-horario">Horário <span class="opcional">(opcional)</span></label>
+        <input id="novo-horario" name="horario" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="19 ou 19:30" data-mascara="hora" aria-describedby="erro-horario">
+        <p id="erro-horario" class="erro" data-campo="horario" role="alert" hidden>Horário inválido. Use 19 ou 19:30.</p>
+      </div>
+      <div class="campo campo-data">
+        <label for="novo-data">Data <span class="opcional">(opcional)</span></label>
+        <input id="novo-data" name="data" type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="27 ou 27/10" data-mascara="data" aria-describedby="erro-data">
+        <p id="erro-data" class="erro" data-campo="data" role="alert" hidden>Data inválida. Use o dia (27) ou dia/mês (27/10).</p>
+      </div>
+      <div class="campo campo-estado">
+        <label for="novo-estado">Estado <span class="opcional">(opcional)</span></label>
+        <input id="novo-estado" name="estado" type="text" maxlength="80" autocomplete="off">
+      </div>
+      <div class="campo campo-obs">
+        <label for="novo-obs">Observações <span class="opcional">(opcional)</span></label>
+        <input id="novo-obs" name="obs" type="text" maxlength="200" autocomplete="off" placeholder="Só aparece na tabela se você escrever">
+      </div>
+      <button type="submit" class="botao botao-primario">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>
+        Adicionar
+      </button>
+    </form>
+
+    <section class="lista" aria-label="Lista de registros">
+      <div id="tabela-caixa" class="tabela-caixa" hidden>
+        <table>
+          <caption class="so-leitor">Registros cadastrados</caption>
+          <thead>
+            <tr>
+              <th scope="col">Nome</th>
+              <th scope="col">Projeto</th>
+              <th scope="col">Horário</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="corpo"></tbody>
+        </table>
+      </div>
+      <div id="vazio" class="vazio">
+        <div class="vazio-icone" aria-hidden="true">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="9" width="34" height="30" rx="7"/><path d="M15 19h8M15 27h8"/><circle cx="33" cy="25" r="5"/><path d="M33 22.5V25l1.8 1.2"/></svg>
+        </div>
+        <p class="vazio-titulo">Nenhum registro ainda</p>
+        <p class="vazio-texto">Digite um nome acima e clique em Adicionar. Projeto, horário e estado podem ficar em branco.</p>
+      </div>
+    </section>
+
+    <footer class="rodape">
+      <span class="rodape-rotulo">Backup</span>
+      <button type="button" id="exportar" class="botao botao-sutil">Exportar</button>
+      <button type="button" id="importar" class="botao botao-sutil">Importar</button>
+      <input type="file" id="arquivo-importar" accept=".json,application/json" hidden>
+    </footer>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden>
+    <span id="toast-texto" class="toast-texto"></span>
+    <button type="button" id="toast-desfazer" class="botao botao-texto">Desfazer</button>
+  </div>
+
+  <script src="logica.js"></script>
+  <script src="app.js"></script>
+  <!-- Nuvem (opcional): sem firebase-config.js preenchido o site funciona só neste aparelho. -->
+  <script src="firebase-config.js"></script>
+  <script src="nuvem.js"></script>
+</body>
+</html>
