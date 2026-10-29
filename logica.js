@@ -197,12 +197,15 @@
   /*
    * Regra do destaque verde (relógio local do dispositivo):
    *  - sem horário: nunca destaca (uma data sozinha também não destaca);
-   *  - horário sem data: vale todo dia; fica verde a partir de HH:MM e volta
-   *    ao normal à meia-noite;
+   *  - horário sem data: vale todo dia, mas o "dia" vira às 6h da manhã (VIRADA_DIA), não à
+   *    meia-noite. Assim um horário de madrugada (01:00) pertence à noite que está em andamento:
+   *    às 21:30, 21:10 já chegou e 01:00 ainda não (chega depois da meia-noite). Às 6h tudo recomeça;
    *  - horário com data: fica verde a partir daquele dia e hora e continua
    *    verde depois, até você editar.
    * O texto do estado nunca é tocado por esta regra.
    */
+  const VIRADA_DIA = 6; // hora em que os horários sem data recomeçam
+
   function horarioAtingido(horario, agora, data) {
     const h = normalizarHorario(horario);
     if (!h) return false;
@@ -213,7 +216,12 @@
       const d = dia.split('-').map(Number);
       return ref.getTime() >= new Date(d[0], d[1] - 1, d[2], partes[0], partes[1], 0, 0).getTime();
     }
-    return ref.getHours() * 60 + ref.getMinutes() >= partes[0] * 60 + partes[1];
+    // Sem data: acha o momento em que esse horário cai no ciclo atual (que começa às 6h)
+    // e vê se o relógio já passou dele.
+    const inicioDoCiclo = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() - (ref.getHours() < VIRADA_DIA ? 1 : 0));
+    const noDiaSeguinte = partes[0] < VIRADA_DIA ? 1 : 0; // 00:00–05:59 acontece depois da meia-noite
+    const ocorrencia = new Date(inicioDoCiclo.getFullYear(), inicioDoCiclo.getMonth(), inicioDoCiclo.getDate() + noDiaSeguinte, partes[0], partes[1], 0, 0);
+    return ref.getTime() >= ocorrencia.getTime();
   }
 
   function salvar(armazenamento, lista) {
@@ -259,16 +267,22 @@
 
   const coletor = new Intl.Collator('pt-BR', { sensitivity: 'base', numeric: true });
 
-  // Ordem de exibição. Em qualquer modo, os de estado LIVRE ou OK vêm primeiro; depois
-  // (e dentro de cada grupo) vale o modo:
+  // Ordem de exibição. Em qualquer modo, primeiro os LIVRE, depois os OK, depois os demais; dentro de cada grupo
+  // vale o modo:
   //   'nome'    alfabética pelo nome, sem diferenciar maiúscula e acento ("Ágata" entre "Abel" e "Bia");
   //   'horario' do menor para o maior horário (08:00 antes de 19:00). Quem não tem horário vai
   //             para o fim do grupo, em ordem alfabética. Mesmo horário: a data (a mais cedo
   //             primeiro; sem data vem antes) e depois o nome.
   // Empate final: a ordem de criação e, por fim, o id (igual em todo aparelho).
+  // 0 = LIVRE (o mais alto), 1 = OK, 2 = todos os outros.
+  function grupo(r) {
+    const t = tipoEstado(r.estado);
+    return t === 'livre' ? 0 : t === 'ok' ? 1 : 2;
+  }
+
   function comparar(modo) {
     return function (a, b) {
-      const g = (tipoEstado(a.estado) ? 0 : 1) - (tipoEstado(b.estado) ? 0 : 1);
+      const g = grupo(a) - grupo(b);
       if (g) return g;
       if (modo === 'horario') {
         const ha = a.horario || '', hb = b.horario || '';
@@ -312,6 +326,7 @@
     removerRegistro: removerRegistro,
     restaurarRegistro: restaurarRegistro,
     horarioAtingido: horarioAtingido,
+    VIRADA_DIA: VIRADA_DIA,
     salvar: salvar,
     carregar: carregar,
     sanearLista: sanearLista,

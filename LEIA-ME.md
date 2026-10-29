@@ -31,12 +31,12 @@ Não precisa de servidor, internet nem instalação.
 - **Valor que não existe** (horário 25, dia 31/11): aparece um aviso no campo e o registro não é salvo, para nada ser descartado sem você ver.
 - **Observações:** campo opcional. Só aparece na tabela, em letra pequena sob o nome, nos registros em que você escreveu algo. Sem observação, nada é mostrado.
 - **Nome:** a primeira letra é sempre maiúscula (digitou `ana`, vira `Ana`; o resto do nome não é mexido). **Não pode haver dois registros com o mesmo nome**, mesmo mudando maiúscula, acento ou espaços (`ana`, `Aná` e ` ANA ` contam como o mesmo). Projeto, horário e estado podem se repetir. Se o nome já existe, aparece um aviso no campo e o registro não é salvo (vale também ao editar e ao desfazer uma exclusão cujo nome já foi reutilizado).
-- **Estado LIVRE e OK:** escreva `livre` ou `ok` de qualquer jeito (`Livre`, ` oK `, `lívre`): é reconhecido sozinho e guardado e mostrado como **`LIVRE`** (rótulo **verde**, liberado) e **`OK`** (rótulo **azul**, não liberado, mas tem trabalho lá). O texto inteiro precisa ser isso: `não livre` ou `ok sim` ficam como digitados e sem cor. O verde claro da **linha** continua sendo só o horário atingido.
+- **Estado LIVRE e OK:** escreva `livre` ou `ok` de qualquer jeito (`Livre`, ` oK `, `lívre`): é reconhecido sozinho e guardado e mostrado como **`LIVRE`** (liberado) e **`OK`** (não liberado, mas tem trabalho lá). A **linha inteira** ganha cor de fundo: **verde** para `LIVRE`, **azul** para `OK`. O texto inteiro precisa ser isso: `não livre` ou `ok sim` ficam como digitados e sem cor. Se o horário também for atingido, a cor do estado continua e o selo "Atingido" aparece ao lado do horário; linhas sem LIVRE/OK ficam verde-claro quando o horário é atingido.
 - **Ordem da lista:** o botão **Ordenar por** (acima da tabela) alterna entre **Horário** (padrão) e **Nome**. A escolha fica guardada neste aparelho.
   - **Horário:** do menor para o maior (`07:00` antes de `19:00`). Quem não tem horário vai para o fim, em ordem alfabética. Com o mesmo horário, vem antes a data mais cedo (sem data primeiro) e depois o nome. Só o horário conta, não a data: um registro de outro mês às 08:00 fica acima de um de hoje às 19:00.
   - **Nome:** alfabética, sem diferenciar maiúscula nem acento (`Item 2` vem antes de `Item 10`).
-  - Nos dois modos, registros com estado `LIVRE` ou `OK` ficam **sempre no topo** (ordenados pelo modo escolhido). Ao adicionar ou editar, a linha vai sozinha para o lugar certo.
-- **Editar:** clique em Editar na linha. Cada campo mostra seu nome em cima (Nome, Observações, Projeto, Horário, Data, Estado) e se é opcional. `Enter` salva, `Esc` cancela. Dá para editar a qualquer momento.
+  - Nos dois modos, o topo da lista é sempre: primeiro os `LIVRE`, depois os `OK`, depois todos os outros (cada grupo ordenado pelo modo escolhido). Ao adicionar ou editar, a linha vai sozinha para o lugar certo.
+- **Editar:** clique em Editar na linha. Se você mudar o **horário ou a data**, o "atingido" é recalculado do zero: se o novo horário já passou, a linha fica verde e a chegada é anotada no histórico na hora; se ainda vai chegar, é anotada quando chegar. Editar outros campos não anota nada. Cada campo mostra seu nome em cima (Nome, Observações, Projeto, Horário, Data, Estado) e se é opcional. `Enter` salva, `Esc` cancela. Dá para editar a qualquer momento.
 - **Histórico:** botão **Histórico** no topo abre uma janela com o que aconteceu: criado, editado (mostra o que mudou, ex.: `Horário: 19:00 → 20:00`), excluído e horário atingido. Cada entrada guarda uma cópia de como o registro estava (projeto, horário, data, estado, observações). Três campos de filtro, que funcionam juntos:
   - **Nome:** só procura no nome.
   - **Projeto:** só procura no projeto.
@@ -46,7 +46,7 @@ Não precisa de servidor, internet nem instalação.
 - **Verde:** quando o relógio do seu dispositivo chega ao horário do registro, a linha fica verde e aparece "Atingido". O texto do Estado nunca é alterado pela cor.
 - **Sem horário:** a linha nunca fica verde. Uma data sozinha (sem horário) só é exibida, não destaca.
 - **Com data:** fica verde a partir daquele dia e hora e **continua verde** depois, até você editar.
-- **Sem data:** o horário vale todo dia (verde a partir de HH:MM, volta ao normal à meia-noite).
+- **Sem data:** o horário vale todo dia, e o dia **vira às 6h da manhã** (não à meia-noite). Assim, às 21:30, `21:10` já chegou, mas `1` (1h da manhã) ainda não: chega depois da meia-noite, e tudo o que ficou verde na noite continua verde até as 6h, quando recomeça. `13` é 13h (1 da tarde) e `1` é 1h da manhã.
 
 ## Sincronizar computador e celular (Firebase)
 
@@ -85,7 +85,7 @@ A chave em `firebase-config.js` é pública por natureza do Firebase; não coloq
 
 - **Histórico é por aparelho e dura 1 dia útil:** cada entrada some sozinha 1 dia útil depois de criada (segunda a sexta; sábado e domingo não contam, feriados também não): criada na sexta às 15h, some na segunda às 15h. Fica só no navegador de cada aparelho e **não sincroniza** pela nuvem. Registra o que você faz neste aparelho. "Horário atingido" só é anotado com a página aberta no momento em que o horário chega (e repete a cada dia para registros só com horário). Desfazer uma exclusão remove a entrada dela. Para mudar o prazo, `DIAS_UTEIS` no começo de `historico.js`.
 - **Onde os dados ficam:** com a nuvem ligada, no Firestore (e uma cópia no aparelho, que funciona sem internet). Sem a nuvem (`firebase-config.js` com `null`), só no navegador (`localStorage`) e outro aparelho não enxerga nada.
-- **Horário sem data:** fica verde a partir daquela hora e **volta ao normal à meia-noite**, valendo de novo no dia seguinte. Se quiser que fique verde e permaneça, preencha a data.
+- **Horário sem data:** fica verde a partir daquela hora e **volta ao normal às 6h da manhã**, valendo de novo no ciclo seguinte (horários entre 00:00 e 05:59 contam como a madrugada que vem depois da noite em andamento). Para mudar essa hora, `VIRADA_DIA` no começo da regra em `logica.js`. Se quiser que fique verde e permaneça, preencha a data.
 - **Data só com o dia:** `5` significa dia 5 do **mês atual**. Se esse dia já passou, o registro fica verde na hora (se tiver horário). Para o mês seguinte, digite o mês (`5/11`).
 - **Datas aceitas:** de 2000 a 2099.
 - **Limite:** cada campo de texto aceita até 80 caracteres; observações, até 200.
@@ -106,7 +106,7 @@ A chave em `firebase-config.js` é pública por natureza do Firebase; não coloq
 node --test testes.js testes-historico.js
 ```
 
-**Resultado esperado:** no final, `# pass 66` e `# fail 0`.
+**Resultado esperado:** no final, `# pass 68` e `# fail 0`.
 
 **Erros comuns:**
 - `node não é reconhecido` / `command not found`: o Node.js não está instalado, ou o terminal foi aberto antes da instalação. Instale e abra um terminal novo.

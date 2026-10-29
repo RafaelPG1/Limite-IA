@@ -181,6 +181,8 @@
   function montarLinha(reg) {
     const tr = criar('tr');
     tr.dataset.id = reg.id;
+    const tipoEst = R.tipoEstado(reg.estado);
+    if (tipoEst) tr.classList.add('estado-' + tipoEst); // cor de fundo da linha: LIVRE (verde) ou OK (azul)
 
     tr.appendChild(celulaNome(reg.nome, reg.obs));
     tr.appendChild(celulaTexto('projeto', 'Projeto', reg.projeto));
@@ -727,7 +729,9 @@
     enviarGravar(res.registro);
     const mudancas = H ? H.diferencas(antes, res.registro) : [];
     if (mudancas.length) registrar('editado', res.registro, mudancas);
-    jaAtingido.set(res.registro.id, R.horarioAtingido(res.registro.horario, new Date(), res.registro.data));
+    // Mudou o horário ou a data: o "atingido" é recalculado do zero. Se o novo horário já passou,
+    // a chegada é anotada no histórico agora; se ainda vai chegar, é anotada quando chegar.
+    if (!antes || antes.horario !== res.registro.horario || antes.data !== res.registro.data) jaAtingido.set(res.registro.id, false);
     const nova = montarLinha(res.registro);
     tr.replaceWith(nova);
     aplicarLista(ordenarLista(lista)); // nome ou estado podem ter mudado: reposiciona a linha

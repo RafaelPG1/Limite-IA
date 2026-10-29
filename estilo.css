@@ -23,6 +23,10 @@
   --aviso-tinta: #5c4300;
   --av-tinta-l: 32%;
   --av-fundo-a: 0.16;
+  --fundo-livre: #c9f0d9;
+  --borda-livre: #5cc58b;
+  --fundo-ok: #d2e2ff;
+  --borda-ok: #78a2ee;
   --livre-fundo: #0f7a45;
   --livre-tinta: #ffffff;
   --azul-fundo: #1d5fd6;
@@ -60,6 +64,10 @@
     --aviso-tinta: #f3d98b;
     --av-tinta-l: 78%;
     --av-fundo-a: 0.2;
+    --fundo-livre: rgba(52, 211, 140, 0.14);
+    --borda-livre: rgba(52, 211, 140, 0.45);
+    --fundo-ok: rgba(122, 176, 255, 0.15);
+    --borda-ok: rgba(122, 176, 255, 0.45);
     --livre-fundo: #34d38c;
     --livre-tinta: #04210f;
     --azul-fundo: #7ab0ff;
@@ -384,7 +392,8 @@ td.horario { font-variant-numeric: tabular-nums; font-weight: 600; }
   font-weight: 600;
 }
 
-tbody tr:not(.atingido):not(.editando):hover td { background: var(--superficie-2); }
+tbody tr:not(.atingido):not(.editando):not(.estado-livre):not(.estado-ok):hover td { background: var(--superficie-2); }
+
 
 /* Estados com cor própria: LIVRE (verde) e OK (azul). Só colorem o rótulo; o texto fica como foi digitado.
    Sólidos de propósito, para não se confundir com o verde claro da linha de horário atingido. */
@@ -394,11 +403,17 @@ tbody tr .chip.chip-ok,
 tbody tr.atingido .chip.chip-ok { background: var(--azul-fundo); color: var(--azul-tinta); font-weight: 700; }
 
 /* Destaque verde: só indicador visual; o texto do estado não é alterado. */
-tbody tr.atingido td {
+tbody tr.atingido:not(.editando) td {
   background: var(--verde-fundo);
   border-color: var(--verde-linha);
 }
 tbody tr.atingido .chip { background: var(--verde-forte); }
+
+/* Fundo da linha por estado: LIVRE verde, OK azul. Vem depois do
+   verde de "atingido" de propósito: a cor do estado prevalece e o horário atingido continua
+   aparecendo no selo "Atingido" ao lado do horário. */
+tbody tr.estado-livre:not(.editando) td { background: var(--fundo-livre); border-color: var(--borda-livre); }
+tbody tr.estado-ok:not(.editando) td { background: var(--fundo-ok); border-color: var(--borda-ok); }
 
 .hora-bloco { display: flex; flex-direction: column; gap: 0.125rem; }
 .data-texto {
@@ -539,6 +554,8 @@ tr.chegou td { animation: pulso-verde 1.6s var(--ease); }
     transition: background-color 0.3s, border-color 0.3s;
   }
   tbody tr.atingido { background: var(--verde-fundo); border-color: var(--verde-linha); }
+  tbody tr.estado-livre:not(.editando) { background: var(--fundo-livre); border-color: var(--borda-livre); }
+  tbody tr.estado-ok:not(.editando) { background: var(--fundo-ok); border-color: var(--borda-ok); }
   tr.editando { border-color: var(--acento); }
 
   td, td:first-child, td:last-child {
@@ -546,7 +563,9 @@ tr.chegou td { animation: pulso-verde 1.6s var(--ease); }
     border: 0;
     border-radius: 0;
   }
-  tbody tr.atingido td, tr.editando td { background: transparent; border: 0; }
+  tbody tr.atingido td, tr.editando td,
+  tbody tr.estado-livre:not(.editando) td, tbody tr.estado-ok:not(.editando) td,
+  tbody tr.atingido:not(.editando) td { background: transparent; border: 0; }
   tr.chegou { animation: pulso-verde-linha 1.6s var(--ease); }
   tr.chegou td { animation: none; }
 

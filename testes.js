@@ -129,7 +129,7 @@ test('edição: altera qualquer campo, inclusive limpando os opcionais', () => {
 
 test('edição: editar não depende de horário nem estado atual, mas o nome segue obrigatório', () => {
   const ids = contador();
-  const lista = [R.criarRegistro({ nome: 'A', horario: '00:01', estado: 'Concluído' }, ids).registro];
+  const lista = [R.criarRegistro({ nome: 'A', horario: '08:00', estado: 'Concluído' }, ids).registro];
   assert.equal(R.horarioAtingido(lista[0].horario, hoje(23, 0)), true); // já está "verde"
   assert.equal(R.editarRegistro(lista, 'id1', { nome: 'B', estado: 'Outro' }).ok, true);
   assert.equal(R.editarRegistro(lista, 'id1', { nome: '  ' }).ok, false);
@@ -197,7 +197,8 @@ test('cor automática: ao mudar o horário, o destaque é recalculado', () => {
   assert.equal(R.horarioAtingido('17:00', agora), true);
   assert.equal(R.horarioAtingido('20:00', agora), false); // horário movido para o futuro
   assert.equal(R.horarioAtingido('00:00', hoje(0, 0)), true); // meia-noite exata
-  assert.equal(R.horarioAtingido('17:00', hoje(0, 0)), false); // novo dia: recomeça
+  assert.equal(R.horarioAtingido('17:00', hoje(0, 0)), true); // a noite ainda é o mesmo ciclo (vira às 6h)
+  assert.equal(R.horarioAtingido('17:00', hoje(6, 0)), false); // às 6h recomeça
 });
 
 test('cor automática não altera o estado digitado pelo usuário', () => {
@@ -314,10 +315,10 @@ test('ordenar: alfabética pelo nome, ignorando maiúscula e acento; números na
   assert.deepEqual(R.ordenar(lista).map((r) => r.nome), ['Abel', 'Ágata', 'bia', 'cris', 'Item 2', 'Item 10', 'Zé']);
 });
 
-test('ordenar: estado LIVRE ou OK vai para cima do alfabeto; os demais seguem o alfabeto', () => {
+test('ordenar: LIVRE primeiro, depois OK, depois os demais (cada grupo em ordem alfabética)', () => {
   const mk = (id, nome, estado) => ({ id, nome, estado, ordem: 1 });
   const lista = [mk('1', 'Ana', 'livre'), mk('2', 'Zeca', 'OK'), mk('3', 'Bia', ''), mk('4', 'Caio', 'ok'), mk('5', 'Abel', 'Pendente'), mk('6', 'Duda', 'LIVRE')];
-  assert.deepEqual(R.ordenar(lista).map((r) => r.nome), ['Ana', 'Caio', 'Duda', 'Zeca', 'Abel', 'Bia']);
+  assert.deepEqual(R.ordenar(lista).map((r) => r.nome), ['Ana', 'Duda', 'Caio', 'Zeca', 'Abel', 'Bia']);
 });
 
 test('ordenar: nomes iguais desempatam pela ordem de criação e depois pelo id (estável entre aparelhos)', () => {
@@ -421,10 +422,10 @@ test('ordenar por horário: do menor para o maior; sem horário vai para o fim, 
   assert.deepEqual(R.ordenar(lista, 'horario').map((r) => r.nome), ['Zé', 'Duda', 'Caio', 'Ana', 'Eva', 'Abel', 'Bia']);
 });
 
-test('ordenar por horário: LIVRE e OK continuam no topo, também ordenados por horário', () => {
+test('ordenar por horário: LIVRE, depois OK, depois os demais; cada grupo por horário', () => {
   const mk = (id, nome, horario, estado) => ({ id, nome, horario, data: '', estado, ordem: 1 });
   const lista = [mk('1', 'Ana', '08:00', ''), mk('2', 'Bia', '20:00', 'LIVRE'), mk('3', 'Caio', '07:00', 'ok'), mk('4', 'Duda', '', 'OK'), mk('5', 'Eva', '06:00', 'x')];
-  assert.deepEqual(R.ordenar(lista, 'horario').map((r) => r.nome), ['Caio', 'Bia', 'Duda', 'Eva', 'Ana']);
+  assert.deepEqual(R.ordenar(lista, 'horario').map((r) => r.nome), ['Bia', 'Caio', 'Duda', 'Eva', 'Ana']);
 });
 
 test('ordenar por horário: mesmo horário desempata pela data (sem data antes) e depois pelo nome', () => {
@@ -439,4 +440,34 @@ test('ordenar: sem modo, ou modo desconhecido, é alfabética; ordenar não alte
   assert.deepEqual(R.ordenar(lista, 'xis').map((r) => r.nome), ['A', 'B']);
   assert.deepEqual(R.ordenar(lista, 'horario').map((r) => r.nome), ['B', 'A']);
   assert.equal(lista[0].nome, 'B');
+});
+
+// ---------- o dia dos horários sem data vira às 6h, não à meia-noite ----------
+test('sem data: o dia vira às 6h; horário de madrugada pertence à noite em andamento', () => {
+  const em = (d, h, m) => new Date(2026, 9, d, h, m || 0);
+  // 21:30 de uma quarta
+  assert.equal(R.horarioAtingido('21:10', em(28, 21, 30)), true);
+  assert.equal(R.horarioAtingido('01:00', em(28, 21, 30)), false, '1h da manhã ainda vai chegar, depois da meia-noite');
+  assert.equal(R.horarioAtingido('13:00', em(28, 21, 30)), true, '13h (1 da tarde) já passou');
+  assert.equal(R.horarioAtingido('23:00', em(28, 21, 30)), false);
+  // passou da meia-noite: 01:00 chegou, e o que veio na noite anterior continua verde
+  assert.equal(R.horarioAtingido('01:00', em(29, 0, 59)), false);
+  assert.equal(R.horarioAtingido('01:00', em(29, 1, 0)), true);
+  assert.equal(R.horarioAtingido('21:10', em(29, 1, 30)), true);
+  assert.equal(R.horarioAtingido('13:00', em(29, 1, 30)), true);
+  assert.equal(R.horarioAtingido('05:59', em(29, 5, 58)), false);
+  assert.equal(R.horarioAtingido('05:59', em(29, 5, 59)), true);
+  // às 6h tudo recomeça
+  assert.equal(R.horarioAtingido('21:10', em(29, 5, 59)), true);
+  assert.equal(R.horarioAtingido('21:10', em(29, 6, 0)), false);
+  assert.equal(R.horarioAtingido('01:00', em(29, 6, 0)), false, 'a 1h seguinte só chega na outra madrugada');
+  assert.equal(R.horarioAtingido('06:00', em(29, 6, 0)), true);
+  assert.equal(R.horarioAtingido('06:30', em(29, 7, 0)), true);
+  assert.equal(R.horarioAtingido('05:00', em(29, 7, 0)), false, 'madrugada do próximo ciclo');
+});
+
+test('com data: nada muda (verde a partir daquele dia e hora, e continua verde)', () => {
+  assert.equal(R.horarioAtingido('01:00', new Date(2026, 9, 28, 21, 30), '2026-10-28'), true);
+  assert.equal(R.horarioAtingido('01:00', new Date(2026, 9, 28, 21, 30), '2026-10-29'), false);
+  assert.equal(R.horarioAtingido('01:00', new Date(2026, 9, 29, 1, 0), '2026-10-29'), true);
 });
