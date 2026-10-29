@@ -99,7 +99,7 @@
 
   // Novo registro vai para o fim da lista, em qualquer aparelho.
   function proximaOrdem() {
-    return lista.reduce(function (m, r) { return Math.max(m, r.ordem || 0); }, Date.now() - 1) + 1;
+    return R.proximaOrdem(lista, new Date());
   }
 
   function mensagem(texto, ms) {
@@ -299,7 +299,7 @@
     const tdHorario = celula('horario', 'Horário');
     const pilha = criar('div', 'pilha');
     entradaMascarada(pilha, 'horario', 'Horário', true, reg.horario, 'hora', '19 ou 19:30', 5);
-    entradaMascarada(pilha, 'data', 'Data', true, R.dataParaTela(reg.data, new Date()), 'data', '27 ou 27/10', 10);
+    entradaMascarada(pilha, 'data', 'Data', false, R.dataParaTela(reg.data, new Date()), 'data', 'vazio = automática', 10);
     tdHorario.appendChild(pilha);
     tr.appendChild(tdHorario);
 
@@ -708,15 +708,47 @@
     nova.querySelector('input').focus();
   }
 
-  function salvarEdicao(tr) {
+  // Mudou o horário e a data ficou como estava: o mesmo horário pode valer para outro dia, então
+  // pergunta (se o dia sugerido for diferente do atual). Devolve true quando abriu a pergunta.
+  function perguntarDia(tr, antes, valor) {
+    const dlg = document.getElementById('escolher-dia');
+    if (!antes || !dlg) return false;
+    const agora = new Date();
+    const horario = R.normalizarHorario(valor('horario'));
+    const dataCampo = R.normalizarData(valor('data'), agora);
+    if (!horario || horario === antes.horario || !dataCampo || dataCampo !== antes.data) return false;
+    const sugerida = R.proximaData(horario, agora);
+    if (sugerida === antes.data) return false;
+    const tela = function (iso) { return R.dataParaTela(iso, agora); };
+    document.getElementById('dia-texto').textContent = 'O horário mudou de ' + (antes.horario || 'sem horário') + ' para ' + horario +
+      '. Este horário vale para o dia ' + tela(antes.data) + ' (como estava) ou para o dia ' + tela(sugerida) + ' (a próxima vez que ele acontece)? Para outro dia, volte e digite a data.';
+    const manter = document.getElementById('dia-manter'), usar = document.getElementById('dia-usar'), voltar = document.getElementById('dia-voltar');
+    manter.textContent = 'Dia ' + tela(antes.data);
+    usar.textContent = 'Dia ' + tela(sugerida);
+    function fechar() {
+      manter.onclick = usar.onclick = voltar.onclick = null;
+      dlg.onclose = null;
+      if (typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open');
+    }
+    manter.onclick = function () { fechar(); salvarEdicao(tr, antes.data); };
+    usar.onclick = function () { fechar(); salvarEdicao(tr, sugerida); };
+    voltar.onclick = function () { fechar(); const c = tr.querySelector('input[name="data"]'); if (c) c.focus(); };
+    dlg.onclose = function () { manter.onclick = usar.onclick = voltar.onclick = null; };
+    if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+    voltar.focus();
+    return true;
+  }
+
+  function salvarEdicao(tr, diaEscolhido) {
     const id = tr.dataset.id;
     const valor = function (nome) { return tr.querySelector('input[name="' + nome + '"]').value; };
     const antes = achar(id);
+    if (!diaEscolhido && perguntarDia(tr, antes, valor)) return;
     const res = R.editarRegistro(lista, id, {
       nome: valor('nome'),
       projeto: valor('projeto'),
       horario: valor('horario'),
-      data: valor('data'),
+      data: diaEscolhido ? R.dataParaTela(diaEscolhido, new Date()) : valor('data'),
       estado: valor('estado'),
       obs: valor('obs'),
     });

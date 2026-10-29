@@ -54,8 +54,8 @@
         <p id="erro-horario" class="erro" data-campo="horario" role="alert" hidden>Horário inválido. Use 19 ou 19:30.</p>
       </div>
       <div class="campo campo-data">
-        <label for="novo-data">Data <span class="opcional">(opcional)</span></label>
-        <input id="novo-data" name="data" type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="27 ou 27/10" data-mascara="data" aria-describedby="erro-data">
+        <label for="novo-data">Data <span class="opcional">(automática)</span></label>
+        <input id="novo-data" name="data" type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="vazio = automática" data-mascara="data" aria-describedby="erro-data">
         <p id="erro-data" class="erro" data-campo="data" role="alert" hidden>Data inválida. Use o dia (27) ou dia/mês (27/10).</p>
       </div>
       <div class="campo campo-estado">
@@ -146,6 +146,16 @@
     <div class="modal-rodape modal-rodape-direita">
       <button type="button" id="conf-cancelar" class="botao botao-sutil">Cancelar</button>
       <button type="button" id="conf-apagar" class="botao botao-perigo-cheio">Apagar tudo</button>
+    </div>
+  </dialog>
+
+  <dialog id="escolher-dia" class="modal modal-pequeno" aria-labelledby="dia-titulo" aria-describedby="dia-texto">
+    <div class="modal-topo"><h2 id="dia-titulo">Em que dia vale o novo horário?</h2></div>
+    <p id="dia-texto" class="conf-texto"></p>
+    <div class="modal-rodape modal-rodape-direita">
+      <button type="button" id="dia-voltar" class="botao botao-sutil">Voltar e escolher outra data</button>
+      <button type="button" id="dia-manter" class="botao botao-sutil"></button>
+      <button type="button" id="dia-usar" class="botao botao-primario"></button>
     </div>
   </dialog>
 

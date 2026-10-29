@@ -162,10 +162,19 @@
   function criarRegistro(dados, novoId, agora, registros) {
     const problemas = erros(dados, agora, registros);
     if (problemas.length) return { ok: false, erro: problemas[0], erros: problemas };
-    return { ok: true, registro: montar(dados, (novoId || gerarId)(), agora) };
+    return { ok: true, registro: completarData(montar(dados, (novoId || gerarId)(), agora), agora) };
   }
 
   // Devolve uma lista nova; a original não é alterada.
+  // "ordem" é um número que só cresce, parecido com a hora em que o registro foi criado
+  // (milissegundos). Serve para manter cada registro no mesmo lugar nos aparelhos e, nos
+  // registros com horário e sem data, marca o momento em que o horário foi "armado":
+  // na criação e sempre que o horário ou a data é alterado.
+  function proximaOrdem(lista, agora) {
+    const base = (agora || new Date()).getTime() - 1;
+    return lista.reduce(function (m, r) { return Math.max(m, r.ordem || 0); }, base) + 1;
+  }
+
   function editarRegistro(lista, id, dados, agora) {
     const indice = lista.findIndex(function (r) { return r.id === id; });
     if (indice === -1) return { ok: false, erro: 'nao-encontrado', erros: ['nao-encontrado'] };
@@ -173,6 +182,10 @@
     if (problemas.length) return { ok: false, erro: problemas[0], erros: problemas };
     const registro = montar(dados, id, agora);
     if (typeof lista[indice].ordem === 'number') registro.ordem = lista[indice].ordem;
+    const antes = lista[indice];
+    // A data nunca é trocada em silêncio: quem decide o dia é o usuário (o app pergunta quando o horário muda).
+    // Só uma data apagada é preenchida sozinha.
+    completarData(registro, agora);
     const nova = lista.slice();
     nova[indice] = registro;
     return { ok: true, lista: nova, registro: registro };
@@ -195,17 +208,15 @@
   }
 
   /*
-   * Regra do destaque verde (relógio local do dispositivo):
+   * Regra do destaque (relógio local do dispositivo):
    *  - sem horário: nunca destaca (uma data sozinha também não destaca);
-   *  - horário sem data: vale todo dia, mas o "dia" vira às 6h da manhã (VIRADA_DIA), não à
-   *    meia-noite. Assim um horário de madrugada (01:00) pertence à noite que está em andamento:
-   *    às 21:30, 21:10 já chegou e 01:00 ainda não (chega depois da meia-noite). Às 6h tudo recomeça;
-   *  - horário com data: fica verde a partir daquele dia e hora e continua
-   *    verde depois, até você editar.
+   *  - horário com data: fica "atingido" a partir daquele dia e hora e continua assim depois,
+   *    até você editar. Quando o usuário não digita a data, o sistema guarda a data de HOJE
+   *    (ver completarData), então todo horário salvo tem dia certo: às 04:50, "9:40" é hoje
+   *    09:40 (ainda não chegou); um horário que já passou hoje fica atingido na hora;
+   *  - horário sem data (só dado cru, de fora): vale o dia de hoje.
    * O texto do estado nunca é tocado por esta regra.
    */
-  const VIRADA_DIA = 6; // hora em que os horários sem data recomeçam
-
   function horarioAtingido(horario, agora, data) {
     const h = normalizarHorario(horario);
     if (!h) return false;
@@ -216,12 +227,45 @@
       const d = dia.split('-').map(Number);
       return ref.getTime() >= new Date(d[0], d[1] - 1, d[2], partes[0], partes[1], 0, 0).getTime();
     }
-    // Sem data: acha o momento em que esse horário cai no ciclo atual (que começa às 6h)
-    // e vê se o relógio já passou dele.
-    const inicioDoCiclo = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() - (ref.getHours() < VIRADA_DIA ? 1 : 0));
-    const noDiaSeguinte = partes[0] < VIRADA_DIA ? 1 : 0; // 00:00–05:59 acontece depois da meia-noite
-    const ocorrencia = new Date(inicioDoCiclo.getFullYear(), inicioDoCiclo.getMonth(), inicioDoCiclo.getDate() + noDiaSeguinte, partes[0], partes[1], 0, 0);
-    return ref.getTime() >= ocorrencia.getTime();
+    return ref.getHours() * 60 + ref.getMinutes() >= partes[0] * 60 + partes[1];
+  }
+
+  // "2026-10-29" para o dia de "agora".
+  function hojeISO(agora) {
+    const d = agora || new Date();
+    return d.getFullYear() + '-' + dois(d.getMonth() + 1) + '-' + dois(d.getDate());
+  }
+
+  // Dia automático: o da PRÓXIMA vez que o horário acontece a partir de agora (comparando só
+  // até o minuto). 00:00 às 20:10 -> amanhã; 22:00 às 20:10 -> hoje; sem horário -> hoje.
+  function proximaData(horario, agora) {
+    const a = new Date((agora || new Date()).getTime());
+    a.setSeconds(0, 0);
+    if (!horario) return hojeISO(a);
+    const p = horario.split(':').map(Number);
+    const alvo = new Date(a.getFullYear(), a.getMonth(), a.getDate(), p[0], p[1], 0, 0);
+    if (alvo.getTime() < a.getTime()) alvo.setDate(alvo.getDate() + 1);
+    return hojeISO(alvo);
+  }
+
+  // A data é obrigatória: se não foi digitada, é preenchida sozinha.
+  function completarData(registro, agora) {
+    if (!registro.data) registro.data = proximaData(registro.horario, agora);
+    return registro;
+  }
+
+  // Registro antigo (de antes da data automática): tem horário e nenhuma data. Mantém o que o
+  // usuário já via: o dia da PRÓXIMA vez que o horário acontecia depois de criado (a "ordem" é
+  // quase a hora de criação, em milissegundos). Sem isso, vale hoje.
+  function dataDeRegistroAntigo(registro) {
+    const o = registro.ordem;
+    if (typeof o !== 'number' || o < 1577836800000) return hojeISO();
+    const a = new Date(o);
+    a.setSeconds(0, 0);
+    const p = registro.horario.split(':').map(Number);
+    const alvo = new Date(a.getFullYear(), a.getMonth(), a.getDate(), p[0], p[1], 0, 0);
+    if (alvo.getTime() < a.getTime()) alvo.setDate(alvo.getDate() + 1);
+    return hojeISO(alvo);
   }
 
   function salvar(armazenamento, lista) {
@@ -247,6 +291,7 @@
       if (vistos.has(id)) id = gerarId();
       const registro = montar(item, id);
       if (!registro.nome) return;
+      if (!registro.data) registro.data = registro.horario ? dataDeRegistroAntigo(registro) : hojeISO();
       vistos.add(id);
       saida.push(registro);
     });
@@ -285,14 +330,20 @@
       const g = grupo(a) - grupo(b);
       if (g) return g;
       if (modo === 'horario') {
+        // Sem horário vai para o fim. Com horário: o menor dia fica em cima; no mesmo dia, o menor horário.
+        if (!a.horario !== !b.horario) return a.horario ? -1 : 1;
+        const da = a.data || '', db = b.data || '';
+        if (da !== db) {
+          if (!da) return 1;
+          if (!db) return -1;
+          return da < db ? -1 : 1; // "AAAA-MM-DD" compara certo como texto
+        }
         const ha = a.horario || '', hb = b.horario || '';
         if (ha !== hb) {
-          if (!ha) return 1;   // sem horário, para o fim
+          if (!ha) return 1;
           if (!hb) return -1;
-          return ha < hb ? -1 : 1; // "HH:MM" compara certo como texto
+          return ha < hb ? -1 : 1; // "HH:MM"
         }
-        const da = a.data || '', db = b.data || '';
-        if (da !== db) return da < db ? -1 : 1; // "AAAA-MM-DD"; vazio fica antes
       }
       const n = coletor.compare(a.nome || '', b.nome || '');
       if (n) return n;
@@ -326,7 +377,8 @@
     removerRegistro: removerRegistro,
     restaurarRegistro: restaurarRegistro,
     horarioAtingido: horarioAtingido,
-    VIRADA_DIA: VIRADA_DIA,
+    proximaData: proximaData,
+    proximaOrdem: proximaOrdem,
     salvar: salvar,
     carregar: carregar,
     sanearLista: sanearLista,

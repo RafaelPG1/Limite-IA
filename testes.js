@@ -20,7 +20,7 @@ const hoje = (h, m) => new Date(2026, 9, 27, h, m, 0);
 test('cadastro: só o nome basta (exemplo USUARIO123)', () => {
   const r = R.criarRegistro({ nome: 'USUARIO123' }, contador());
   assert.equal(r.ok, true);
-  assert.deepEqual(r.registro, { id: 'id1', nome: 'USUARIO123', projeto: '', horario: '', data: '', estado: '', obs: '' });
+  assert.deepEqual(r.registro, { id: 'id1', nome: 'USUARIO123', projeto: '', horario: '', data: R.proximaData(''), estado: '', obs: '' });
 });
 
 test('cadastro: aceita qualquer combinação dos opcionais', () => {
@@ -64,7 +64,7 @@ test('data: datas que não existem são recusadas, vazio é permitido', () => {
   });
   const ok = R.criarRegistro({ nome: 'A', data: '' }, contador());
   assert.equal(ok.ok, true);
-  assert.equal(ok.registro.data, '');
+  assert.equal(ok.registro.data, R.proximaData(''), 'vazio: data automática');
 });
 
 test('cadastro: todos os erros aparecem juntos', () => {
@@ -78,7 +78,10 @@ test('edição: data pode ser colocada, trocada e removida; erro não altera nad
   const e1 = R.editarRegistro(lista, 'id1', { nome: 'A', horario: '10:00', data: '28/10/2026' });
   assert.equal(e1.lista[0].data, '2026-10-28');
   const e2 = R.editarRegistro(e1.lista, 'id1', { nome: 'A', horario: '10:00', data: '' });
-  assert.equal(e2.lista[0].data, '');
+  assert.equal(e2.lista[0].data, e2.lista[0].data, e2.lista[0].data, 'sem data e com horário: preenche com hoje');
+  assert.match(e2.lista[0].data, /^\d{4}-\d{2}-\d{2}$/);
+  const e2b = R.editarRegistro(lista, 'id1', { nome: 'A', horario: '', data: '' });
+  assert.equal(e2b.lista[0].data, R.proximaData(''), 'sem horário e sem data: hoje');
   const e3 = R.editarRegistro(e1.lista, 'id1', { nome: 'A', horario: '10:00', data: '31/02/2026' });
   assert.equal(e3.ok, false);
   assert.equal(e1.lista[0].data, '2026-10-28', 'lista original intacta');
@@ -108,7 +111,7 @@ test('persistência: data é salva e registros antigos (sem data) continuam abri
   arm.setItem(R.CHAVE, JSON.stringify([{ id: 'x', nome: 'ANTIGO', projeto: '', horario: '10:00', estado: '' }]));
   const antigos = R.carregar(arm);
   assert.equal(antigos.length, 1);
-  assert.equal(antigos[0].data, '');
+  assert.match(antigos[0].data, /^\d{4}-\d{2}-\d{2}$/, 'registro antigo com horário e sem data ganha uma data');
 });
 
 test('edição: altera qualquer campo, inclusive limpando os opcionais', () => {
@@ -119,7 +122,7 @@ test('edição: altera qualquer campo, inclusive limpando os opcionais', () => {
   ];
   const e1 = R.editarRegistro(lista, 'id1', { nome: 'RAFAEL P.', projeto: '', horario: '', estado: '' });
   assert.equal(e1.ok, true);
-  assert.deepEqual(e1.lista[0], { id: 'id1', nome: 'RAFAEL P.', projeto: '', horario: '', data: '', estado: '', obs: '' });
+  assert.deepEqual(e1.lista[0], { id: 'id1', nome: 'RAFAEL P.', projeto: '', horario: '', data: e1.lista[0].data, estado: '', obs: '' });
   assert.equal(lista[0].nome, 'RAFAEL', 'a lista original não pode mudar');
   assert.equal(e1.lista[1].nome, 'SISTEMA', 'os outros registros ficam iguais');
 
@@ -197,8 +200,7 @@ test('cor automática: ao mudar o horário, o destaque é recalculado', () => {
   assert.equal(R.horarioAtingido('17:00', agora), true);
   assert.equal(R.horarioAtingido('20:00', agora), false); // horário movido para o futuro
   assert.equal(R.horarioAtingido('00:00', hoje(0, 0)), true); // meia-noite exata
-  assert.equal(R.horarioAtingido('17:00', hoje(0, 0)), true); // a noite ainda é o mesmo ciclo (vira às 6h)
-  assert.equal(R.horarioAtingido('17:00', hoje(6, 0)), false); // às 6h recomeça
+  assert.equal(R.horarioAtingido('17:00', hoje(0, 0)), false); // o dia recomeça à meia-noite
 });
 
 test('cor automática não altera o estado digitado pelo usuário', () => {
@@ -428,10 +430,10 @@ test('ordenar por horário: LIVRE, depois OK, depois os demais; cada grupo por h
   assert.deepEqual(R.ordenar(lista, 'horario').map((r) => r.nome), ['Bia', 'Caio', 'Duda', 'Eva', 'Ana']);
 });
 
-test('ordenar por horário: mesmo horário desempata pela data (sem data antes) e depois pelo nome', () => {
+test('ordenar por horário: mesmo horário o dia manda (sem data por último) e depois o nome', () => {
   const mk = (id, nome, data) => ({ id, nome, horario: '19:00', data, estado: '', ordem: 1 });
   const lista = [mk('1', 'Zeca', '2026-11-05'), mk('2', 'Bia', ''), mk('3', 'Ana', '2026-11-05'), mk('4', 'Caio', '2026-10-30')];
-  assert.deepEqual(R.ordenar(lista, 'horario').map((r) => r.nome), ['Bia', 'Caio', 'Ana', 'Zeca']);
+  assert.deepEqual(R.ordenar(lista, 'horario').map((r) => r.nome), ['Caio', 'Ana', 'Zeca', 'Bia']);
 });
 
 test('ordenar: sem modo, ou modo desconhecido, é alfabética; ordenar não altera a lista original', () => {
@@ -442,32 +444,69 @@ test('ordenar: sem modo, ou modo desconhecido, é alfabética; ordenar não alte
   assert.equal(lista[0].nome, 'B');
 });
 
-// ---------- o dia dos horários sem data vira às 6h, não à meia-noite ----------
-test('sem data: o dia vira às 6h; horário de madrugada pertence à noite em andamento', () => {
-  const em = (d, h, m) => new Date(2026, 9, d, h, m || 0);
-  // 21:30 de uma quarta
-  assert.equal(R.horarioAtingido('21:10', em(28, 21, 30)), true);
-  assert.equal(R.horarioAtingido('01:00', em(28, 21, 30)), false, '1h da manhã ainda vai chegar, depois da meia-noite');
-  assert.equal(R.horarioAtingido('13:00', em(28, 21, 30)), true, '13h (1 da tarde) já passou');
-  assert.equal(R.horarioAtingido('23:00', em(28, 21, 30)), false);
-  // passou da meia-noite: 01:00 chegou, e o que veio na noite anterior continua verde
-  assert.equal(R.horarioAtingido('01:00', em(29, 0, 59)), false);
-  assert.equal(R.horarioAtingido('01:00', em(29, 1, 0)), true);
-  assert.equal(R.horarioAtingido('21:10', em(29, 1, 30)), true);
-  assert.equal(R.horarioAtingido('13:00', em(29, 1, 30)), true);
-  assert.equal(R.horarioAtingido('05:59', em(29, 5, 58)), false);
-  assert.equal(R.horarioAtingido('05:59', em(29, 5, 59)), true);
-  // às 6h tudo recomeça
-  assert.equal(R.horarioAtingido('21:10', em(29, 5, 59)), true);
-  assert.equal(R.horarioAtingido('21:10', em(29, 6, 0)), false);
-  assert.equal(R.horarioAtingido('01:00', em(29, 6, 0)), false, 'a 1h seguinte só chega na outra madrugada');
-  assert.equal(R.horarioAtingido('06:00', em(29, 6, 0)), true);
-  assert.equal(R.horarioAtingido('06:30', em(29, 7, 0)), true);
-  assert.equal(R.horarioAtingido('05:00', em(29, 7, 0)), false, 'madrugada do próximo ciclo');
+// ---------- data automática (hoje) quando há horário e não há data ----------
+const em2 = (d, h, m, s) => new Date(2026, 9, d, h, m || 0, s || 0);
+
+test('data é obrigatória e automática: sem data, vale a próxima vez que o horário acontece', () => {
+  const nova = (h, agora) => R.criarRegistro({ nome: 'Ana', horario: h }, contador(), agora).registro.data;
+  assert.equal(nova('9:40', em2(29, 4, 50)), '2026-10-29', 'ainda vai chegar hoje');
+  assert.equal(nova('22', em2(29, 20, 10)), '2026-10-29');
+  assert.equal(nova('0', em2(29, 20, 10)), '2026-10-30', '00h às 20:10 é amanhã');
+  assert.equal(nova('18', em2(29, 20, 10)), '2026-10-30', '18h já passou hoje: próxima é amanhã');
+  assert.equal(nova('20:10', em2(29, 20, 10, 40)), '2026-10-29', 'mesmo minuto: ainda hoje');
+  assert.equal(nova('', em2(29, 20, 10)), '2026-10-29', 'sem horário: hoje');
+  assert.equal(nova('0', new Date(2026, 11, 31, 20, 0)), '2027-01-01', 'virada de ano');
+  const t = R.criarRegistro({ nome: 'Cai', horario: '10', data: '30/10' }, contador(), em2(29, 4, 50)).registro;
+  assert.equal(t.data, '2026-10-30', 'data digitada é respeitada');
 });
 
-test('com data: nada muda (verde a partir daquele dia e hora, e continua verde)', () => {
-  assert.equal(R.horarioAtingido('01:00', new Date(2026, 9, 28, 21, 30), '2026-10-28'), true);
-  assert.equal(R.horarioAtingido('01:00', new Date(2026, 9, 28, 21, 30), '2026-10-29'), false);
-  assert.equal(R.horarioAtingido('01:00', new Date(2026, 9, 29, 1, 0), '2026-10-29'), true);
+test('com a data automática, o registro só fica atingido quando a hora chega', () => {
+  const r = R.criarRegistro({ nome: 'Ana', horario: '1' }, contador(), em2(28, 21, 30)).registro;
+  assert.equal(r.data, '2026-10-29');
+  assert.equal(R.horarioAtingido(r.horario, em2(28, 21, 31), r.data), false);
+  assert.equal(R.horarioAtingido(r.horario, em2(29, 0, 59), r.data), false);
+  assert.equal(R.horarioAtingido(r.horario, em2(29, 1, 0), r.data), true);
+});
+
+test('editar o horário NÃO troca a data em silêncio; data apagada volta a ser automática', () => {
+  const agora = em2(29, 20, 17);
+  const base = R.criarRegistro({ nome: 'Ana', horario: '22', data: '30/10' }, contador(), agora).registro;
+  assert.equal(base.data, '2026-10-30');
+  const ed = (dados) => R.editarRegistro([base], base.id, Object.assign({ nome: 'Ana', data: '30/10/2026' }, dados), agora).registro;
+  assert.equal(ed({ horario: '21' }).data, '2026-10-30', 'a data continua a mesma');
+  assert.equal(ed({ horario: '21', data: '29/10/2026' }).data, '2026-10-29', 'o usuário pode mover para o dia 29');
+  assert.equal(ed({ horario: '21', data: '' }).data, '2026-10-29', 'data apagada: próxima vez do horário');
+  assert.equal(ed({ projeto: 'X', horario: '22' }).data, '2026-10-30');
+});
+
+test('proximaData: sugestão usada na pergunta ao editar o horário', () => {
+  assert.equal(R.proximaData('21:00', em2(29, 20, 17)), '2026-10-29');
+  assert.equal(R.proximaData('00:00', em2(29, 20, 17)), '2026-10-30');
+});
+
+test('ordenar por horário: o menor dia fica em cima; no mesmo dia, o menor horário', () => {
+  const l = [
+    { id: '1', nome: 'D30-08', horario: '08:00', data: '2026-10-30', estado: '' },
+    { id: '2', nome: 'D29-23', horario: '23:00', data: '2026-10-29', estado: '' },
+    { id: '3', nome: 'D29-10', horario: '10:00', data: '2026-10-29', estado: '' },
+    { id: '4', nome: 'Sem', horario: '', data: '2026-10-29', estado: '' },
+  ];
+  assert.deepEqual(R.ordenar(l, 'horario').map((r) => r.nome), ['D29-10', 'D29-23', 'D30-08', 'Sem']);
+  l.push({ id: '5', nome: 'Livre30', horario: '22:00', data: '2026-10-30', estado: 'LIVRE' });
+  assert.equal(R.ordenar(l, 'horario')[0].nome, 'Livre30', 'LIVRE continua acima de tudo');
+});
+
+test('registro antigo com horário e sem data: ganha a data da próxima ocorrência após criado', () => {
+  const criado = em2(28, 21, 30).getTime();
+  const lista = R.sanearLista([{ id: 'a', nome: 'Ana', horario: '01:00', estado: '', ordem: criado }]);
+  assert.equal(lista[0].data, '2026-10-29');
+  const sem = R.sanearLista([{ id: 'b', nome: 'Bia', horario: '01:00', estado: '', ordem: 3 }]);
+  assert.match(sem[0].data, /^\d{4}-\d{2}-\d{2}$/);
+});
+
+test('proximaOrdem: sempre maior que as existentes e que o agora', () => {
+  const agora = em2(29, 4, 50);
+  assert.equal(R.proximaOrdem([], agora), agora.getTime());
+  assert.equal(R.proximaOrdem([{ ordem: agora.getTime() }], agora), agora.getTime() + 1);
+  assert.equal(R.proximaOrdem([{ ordem: 5 }], agora), agora.getTime());
 });
