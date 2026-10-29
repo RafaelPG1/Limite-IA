@@ -440,6 +440,8 @@ tbody tr.estado-ok:not(.editando) td { background: var(--fundo-ok); border-color
   font-weight: 700;
 }
 .selo[hidden] { display: none; }
+.faltam { font-size: 0.8125rem; font-weight: 600; color: var(--tinta-2); font-variant-numeric: tabular-nums; }
+.faltam:empty { display: none; }
 .selo svg { width: 0.875rem; height: 0.875rem; }
 
 /* Linha em edição */

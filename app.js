@@ -199,6 +199,7 @@
         selo.insertAdjacentHTML('afterbegin', ICONES.atingido);
         selo.appendChild(document.createTextNode('Atingido'));
         grupoHora.appendChild(selo);
+        grupoHora.appendChild(criar('span', 'faltam'));
         bloco.appendChild(grupoHora);
       }
       if (reg.data) bloco.appendChild(criar('span', 'data-texto', R.dataParaTela(reg.data, new Date())));
@@ -219,6 +220,7 @@
     tr.appendChild(tdAcoes);
 
     aplicarDestaque(tr, R.horarioAtingido(reg.horario, new Date(), reg.data));
+    atualizarFaltam(tr, reg, new Date());
     return tr;
   }
 
@@ -328,6 +330,14 @@
     }
     const selo = tr.querySelector('.selo');
     if (selo && selo.hidden === atingido) selo.hidden = !atingido;
+  }
+
+  // "faltam 1h 05min" ao lado do horário enquanto ele não chega; some quando chega.
+  function atualizarFaltam(tr, reg, agora) {
+    const el2 = tr.querySelector('.faltam');
+    if (!el2) return;
+    const texto = R.formatarRestante(R.tempoRestante(reg.horario, agora, reg.data));
+    if (el2.textContent !== texto) el2.textContent = texto;
   }
 
   function iguais(a, b) {
@@ -554,6 +564,7 @@
       if (reg) {
         const atingido = R.horarioAtingido(reg.horario, agora, reg.data);
         aplicarDestaque(tr, atingido);
+        atualizarFaltam(tr, reg, agora);
         if (jaAtingido.get(reg.id) === false && atingido) registrar('atingido', reg);
         jaAtingido.set(reg.id, atingido);
       }

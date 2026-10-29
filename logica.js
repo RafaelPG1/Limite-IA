@@ -231,6 +231,31 @@
   }
 
   // "2026-10-29" para o dia de "agora".
+  // Quanto falta (em ms) até data + horário. null se não há horário ou se já chegou.
+  function tempoRestante(horario, agora, data) {
+    const h = normalizarHorario(horario);
+    if (!h) return null;
+    const p = h.split(':').map(Number);
+    const ref = agora || new Date();
+    const dia = normalizarData(data);
+    const d = dia ? dia.split('-').map(Number) : [ref.getFullYear(), ref.getMonth() + 1, ref.getDate()];
+    const falta = new Date(d[0], d[1] - 1, d[2], p[0], p[1], 0, 0).getTime() - ref.getTime();
+    return falta > 0 ? falta : null;
+  }
+
+  // "faltam 2d 3h", "faltam 1h 05min", "faltam 12min 05s", "faltam 40s" (sem arredondar para cima).
+  function formatarRestante(ms) {
+    if (typeof ms !== 'number' || !(ms > 0)) return '';
+    const t = Math.floor(ms / 1000);
+    const d = Math.floor(t / 86400), h = Math.floor((t % 86400) / 3600), m = Math.floor((t % 3600) / 60), seg = t % 60;
+    let corpo;
+    if (d > 0) corpo = d + 'd' + (h ? ' ' + h + 'h' : '');
+    else if (h > 0) corpo = h + 'h' + (m ? ' ' + String(m).padStart(2, '0') + 'min' : '');
+    else if (m > 0) corpo = m + 'min ' + String(seg).padStart(2, '0') + 's';
+    else corpo = seg + 's';
+    return 'faltam ' + corpo;
+  }
+
   function hojeISO(agora) {
     const d = agora || new Date();
     return d.getFullYear() + '-' + dois(d.getMonth() + 1) + '-' + dois(d.getDate());
@@ -377,6 +402,8 @@
     removerRegistro: removerRegistro,
     restaurarRegistro: restaurarRegistro,
     horarioAtingido: horarioAtingido,
+    tempoRestante: tempoRestante,
+    formatarRestante: formatarRestante,
     proximaData: proximaData,
     proximaOrdem: proximaOrdem,
     salvar: salvar,

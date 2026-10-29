@@ -510,3 +510,18 @@ test('proximaOrdem: sempre maior que as existentes e que o agora', () => {
   assert.equal(R.proximaOrdem([{ ordem: agora.getTime() }], agora), agora.getTime() + 1);
   assert.equal(R.proximaOrdem([{ ordem: 5 }], agora), agora.getTime());
 });
+
+test('tempo restante: só enquanto o horário não chegou; formato legível', () => {
+  const agora = em2(29, 20, 17, 0);
+  assert.equal(R.tempoRestante('22:00', agora, '2026-10-29'), 103 * 60 * 1000);
+  assert.equal(R.tempoRestante('20:17', agora, '2026-10-29'), null, 'chegou');
+  assert.equal(R.tempoRestante('10:00', agora, '2026-10-29'), null, 'já passou');
+  assert.equal(R.tempoRestante('', agora, '2026-10-29'), null, 'sem horário');
+  assert.equal(R.formatarRestante(103 * 60 * 1000), 'faltam 1h 43min');
+  assert.equal(R.formatarRestante(2 * 3600 * 1000), 'faltam 2h');
+  assert.equal(R.formatarRestante(12 * 60 * 1000 + 5000), 'faltam 12min 05s');
+  assert.equal(R.formatarRestante(40 * 1000), 'faltam 40s');
+  assert.equal(R.formatarRestante(26 * 3600 * 1000), 'faltam 1d 2h');
+  assert.equal(R.formatarRestante(0), '');
+  assert.equal(R.tempoRestante('00:00', agora, '2026-10-30'), (3 * 3600 + 43 * 60) * 1000);
+});

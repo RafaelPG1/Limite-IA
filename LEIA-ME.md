@@ -48,6 +48,7 @@ Não precisa de servidor, internet nem instalação.
 - **Data obrigatória e automática:** se você deixar a **Data** vazia, ela é preenchida sozinha com o **dia da próxima vez em que o horário acontece**, a partir de agora. Exemplos às 20:10: `22` é hoje; `00` e `18` são amanhã; sem horário, hoje. Se você digitar a data, ela é respeitada.
 - **Editar o horário:** a data **nunca muda sozinha**. Se você muda o horário e não mexe na data, o site pergunta em que dia ele vale: o dia que estava, ou o dia da próxima vez que esse horário acontece (a pergunta só aparece se os dois forem diferentes). "Voltar" deixa você digitar outra data. Se você mudar a data na própria edição, ela vale e não há pergunta. Cada dia tem 24h: dia 30 às 22h pode ser movido para o dia 29 por essa pergunta ou digitando a data.
 - **Regra única:** fica verde quando **data + horário** chegam, e continua verde até você editar. Para marcar algo que já passou hoje, digite a data de hoje (ex.: `29`).
+- **Tempo que falta:** enquanto o horário não chegou, aparece ao lado dele quanto falta (`faltam 1h 41min`, `faltam 12min 05s`, `faltam 1d 2h`). Atualiza sozinho a cada segundo e some quando o horário chega (aparece o selo "Atingido"). Usa o relógio do seu aparelho.
 
 ## Sincronizar computador e celular (Firebase)
 
@@ -107,7 +108,7 @@ A chave em `firebase-config.js` é pública por natureza do Firebase; não coloq
 node --test testes.js testes-historico.js
 ```
 
-**Resultado esperado:** no final, `# pass 73` e `# fail 0`.
+**Resultado esperado:** no final, `# pass 74` e `# fail 0`.
 
 **Erros comuns:**
 - `node não é reconhecido` / `command not found`: o Node.js não está instalado, ou o terminal foi aberto antes da instalação. Instale e abra um terminal novo.
