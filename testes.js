@@ -413,3 +413,30 @@ test('dados antigos: ao carregar, nome vira com maiúscula e livre/ok viram LIVR
   const r = R.sanearLista([{ id: 'a', nome: 'ana', estado: 'livre' }, { id: 'b', nome: 'bia', estado: 'Ok' }, { id: 'c', nome: 'caio', estado: 'ok?' }]);
   assert.deepEqual(r.map((x) => [x.nome, x.estado]), [['Ana', 'LIVRE'], ['Bia', 'OK'], ['Caio', 'ok?']]);
 });
+
+// ---------- ordenar por horário ----------
+test('ordenar por horário: do menor para o maior; sem horário vai para o fim, em ordem alfabética', () => {
+  const mk = (id, nome, horario, extra) => Object.assign({ id, nome, horario, data: '', estado: '', ordem: 1 }, extra);
+  const lista = [mk('1', 'Ana', '19:00'), mk('2', 'Bia', ''), mk('3', 'Caio', '08:30'), mk('4', 'Abel', ''), mk('5', 'Duda', '08:05'), mk('6', 'Eva', '23:59'), mk('7', 'Zé', '00:00')];
+  assert.deepEqual(R.ordenar(lista, 'horario').map((r) => r.nome), ['Zé', 'Duda', 'Caio', 'Ana', 'Eva', 'Abel', 'Bia']);
+});
+
+test('ordenar por horário: LIVRE e OK continuam no topo, também ordenados por horário', () => {
+  const mk = (id, nome, horario, estado) => ({ id, nome, horario, data: '', estado, ordem: 1 });
+  const lista = [mk('1', 'Ana', '08:00', ''), mk('2', 'Bia', '20:00', 'LIVRE'), mk('3', 'Caio', '07:00', 'ok'), mk('4', 'Duda', '', 'OK'), mk('5', 'Eva', '06:00', 'x')];
+  assert.deepEqual(R.ordenar(lista, 'horario').map((r) => r.nome), ['Caio', 'Bia', 'Duda', 'Eva', 'Ana']);
+});
+
+test('ordenar por horário: mesmo horário desempata pela data (sem data antes) e depois pelo nome', () => {
+  const mk = (id, nome, data) => ({ id, nome, horario: '19:00', data, estado: '', ordem: 1 });
+  const lista = [mk('1', 'Zeca', '2026-11-05'), mk('2', 'Bia', ''), mk('3', 'Ana', '2026-11-05'), mk('4', 'Caio', '2026-10-30')];
+  assert.deepEqual(R.ordenar(lista, 'horario').map((r) => r.nome), ['Bia', 'Caio', 'Ana', 'Zeca']);
+});
+
+test('ordenar: sem modo, ou modo desconhecido, é alfabética; ordenar não altera a lista original', () => {
+  const lista = [{ id: '1', nome: 'B', horario: '08:00' }, { id: '2', nome: 'A', horario: '09:00' }];
+  assert.deepEqual(R.ordenar(lista).map((r) => r.nome), ['A', 'B']);
+  assert.deepEqual(R.ordenar(lista, 'xis').map((r) => r.nome), ['A', 'B']);
+  assert.deepEqual(R.ordenar(lista, 'horario').map((r) => r.nome), ['B', 'A']);
+  assert.equal(lista[0].nome, 'B');
+});

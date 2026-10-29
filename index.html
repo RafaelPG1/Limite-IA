@@ -73,6 +73,13 @@
     </form>
 
     <section class="lista" aria-label="Lista de registros">
+      <div id="barra-ordem" class="barra-ordem" role="group" aria-label="Ordenar a lista por" hidden>
+        <span class="barra-ordem-rotulo">Ordenar por</span>
+        <div class="segmentos">
+          <button type="button" class="segmento" data-ordem="horario" aria-pressed="true">Horário</button>
+          <button type="button" class="segmento" data-ordem="nome" aria-pressed="false">Nome</button>
+        </div>
+      </div>
       <div id="tabela-caixa" class="tabela-caixa" hidden>
         <table>
           <caption class="so-leitor">Registros cadastrados</caption>

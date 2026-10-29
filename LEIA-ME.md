@@ -32,7 +32,10 @@ Não precisa de servidor, internet nem instalação.
 - **Observações:** campo opcional. Só aparece na tabela, em letra pequena sob o nome, nos registros em que você escreveu algo. Sem observação, nada é mostrado.
 - **Nome:** a primeira letra é sempre maiúscula (digitou `ana`, vira `Ana`; o resto do nome não é mexido). **Não pode haver dois registros com o mesmo nome**, mesmo mudando maiúscula, acento ou espaços (`ana`, `Aná` e ` ANA ` contam como o mesmo). Projeto, horário e estado podem se repetir. Se o nome já existe, aparece um aviso no campo e o registro não é salvo (vale também ao editar e ao desfazer uma exclusão cujo nome já foi reutilizado).
 - **Estado LIVRE e OK:** escreva `livre` ou `ok` de qualquer jeito (`Livre`, ` oK `, `lívre`): é reconhecido sozinho e guardado e mostrado como **`LIVRE`** (rótulo **verde**, liberado) e **`OK`** (rótulo **azul**, não liberado, mas tem trabalho lá). O texto inteiro precisa ser isso: `não livre` ou `ok sim` ficam como digitados e sem cor. O verde claro da **linha** continua sendo só o horário atingido.
-- **Ordem da lista:** registros com estado `LIVRE` ou `OK` ficam sempre no topo (em ordem alfabética entre eles). Os demais vêm depois, em ordem alfabética pelo nome (sem diferenciar maiúscula nem acento; `Item 2` vem antes de `Item 10`). Ao adicionar ou editar, a linha vai sozinha para o lugar certo.
+- **Ordem da lista:** o botão **Ordenar por** (acima da tabela) alterna entre **Horário** (padrão) e **Nome**. A escolha fica guardada neste aparelho.
+  - **Horário:** do menor para o maior (`07:00` antes de `19:00`). Quem não tem horário vai para o fim, em ordem alfabética. Com o mesmo horário, vem antes a data mais cedo (sem data primeiro) e depois o nome. Só o horário conta, não a data: um registro de outro mês às 08:00 fica acima de um de hoje às 19:00.
+  - **Nome:** alfabética, sem diferenciar maiúscula nem acento (`Item 2` vem antes de `Item 10`).
+  - Nos dois modos, registros com estado `LIVRE` ou `OK` ficam **sempre no topo** (ordenados pelo modo escolhido). Ao adicionar ou editar, a linha vai sozinha para o lugar certo.
 - **Editar:** clique em Editar na linha. Cada campo mostra seu nome em cima (Nome, Observações, Projeto, Horário, Data, Estado) e se é opcional. `Enter` salva, `Esc` cancela. Dá para editar a qualquer momento.
 - **Histórico:** botão **Histórico** no topo abre uma janela com o que aconteceu: criado, editado (mostra o que mudou, ex.: `Horário: 19:00 → 20:00`), excluído e horário atingido. Cada entrada guarda uma cópia de como o registro estava (projeto, horário, data, estado, observações). Três campos de filtro, que funcionam juntos:
   - **Nome:** só procura no nome.
@@ -103,7 +106,7 @@ A chave em `firebase-config.js` é pública por natureza do Firebase; não coloq
 node --test testes.js testes-historico.js
 ```
 
-**Resultado esperado:** no final, `# pass 62` e `# fail 0`.
+**Resultado esperado:** no final, `# pass 66` e `# fail 0`.
 
 **Erros comuns:**
 - `node não é reconhecido` / `command not found`: o Node.js não está instalado, ou o terminal foi aberto antes da instalação. Instale e abra um terminal novo.

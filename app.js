@@ -43,6 +43,7 @@
     sync: document.getElementById('sync'),
     syncTexto: document.getElementById('sync-texto'),
     msg: document.getElementById('msg'),
+    barraOrdem: document.getElementById('barra-ordem'),
     abrirHist: document.getElementById('abrir-historico'),
     hist: document.getElementById('historico'),
     histFechar: document.getElementById('hist-fechar'),
@@ -61,7 +62,14 @@
   let armazenamento = null;
   try { armazenamento = window.localStorage; } catch (e) { armazenamento = null; }
 
-  let lista = armazenamento ? R.ordenar(R.garantirOrdem(R.carregar(armazenamento))) : [];
+  // Como a lista é ordenada: 'horario' (menor horário primeiro; padrão) ou 'nome' (alfabética).
+  // A escolha fica guardada neste aparelho.
+  const CHAVE_ORDEM = 'registros:ordenacao';
+  let modoOrdem = 'horario';
+  try { if (armazenamento && armazenamento.getItem(CHAVE_ORDEM) === 'nome') modoOrdem = 'nome'; } catch (e) { /* segue no padrão */ }
+  function ordenarLista(l) { return R.ordenar(l, modoOrdem); }
+
+  let lista = armazenamento ? ordenarLista(R.garantirOrdem(R.carregar(armazenamento))) : [];
   let nuvem = null; // adaptador do Firestore (nuvem.js); null = só neste aparelho
   let jaConectou = false; // já recebemos dados confirmados pelo servidor
   let statusTravadoAte = 0; // um erro fica visível por um tempo, sem ser apagado por "Sincronizado"
@@ -360,6 +368,7 @@
     const vazia = lista.length === 0;
     el.vazio.hidden = !vazia;
     el.caixa.hidden = vazia;
+    el.barraOrdem.hidden = vazia;
     atualizarResumo(new Date());
   }
 
@@ -376,6 +385,22 @@
     el.resAtingidos.hidden = atingidos === 0;
     el.resAtingidos.textContent = atingidos === 1 ? '1 no horário' : atingidos + ' no horário';
   }
+
+  /* ---------- Ordenar por horário ou por nome ---------- */
+  function mostrarModoOrdem() {
+    Array.prototype.forEach.call(el.barraOrdem.querySelectorAll('button[data-ordem]'), function (b) {
+      b.setAttribute('aria-pressed', b.dataset.ordem === modoOrdem ? 'true' : 'false');
+    });
+  }
+
+  el.barraOrdem.addEventListener('click', function (ev) {
+    const b = ev.target.closest('button[data-ordem]');
+    if (!b || b.dataset.ordem === modoOrdem) return;
+    modoOrdem = b.dataset.ordem;
+    try { if (armazenamento) armazenamento.setItem(CHAVE_ORDEM, modoOrdem); } catch (e) { /* só não guarda */ }
+    mostrarModoOrdem();
+    aplicarLista(ordenarLista(lista));
+  });
 
   /* ---------- Histórico ---------- */
   const ROTULO_TIPO = { criado: 'Criado', editado: 'Editado', excluido: 'Excluído', atingido: 'Horário atingido' };
@@ -557,7 +582,7 @@
 
   // A lista é sempre exibida em ordem alfabética (OK em cima); um registro novo entra no lugar certo.
   function registrarNovo(registro) {
-    aplicarLista(R.ordenar(lista.concat(registro)));
+    aplicarLista(ordenarLista(lista.concat(registro)));
     persistir();
     enviarGravar(registro);
     registrar('criado', registro);
@@ -705,7 +730,7 @@
     jaAtingido.set(res.registro.id, R.horarioAtingido(res.registro.horario, new Date(), res.registro.data));
     const nova = montarLinha(res.registro);
     tr.replaceWith(nova);
-    aplicarLista(R.ordenar(lista)); // nome ou estado podem ter mudado: reposiciona a linha
+    aplicarLista(ordenarLista(lista)); // nome ou estado podem ter mudado: reposiciona a linha
     atualizarResumo(new Date());
     nova.querySelector('[data-acao="editar"]').focus();
     mostrarLinha(res.registro.id);
@@ -776,7 +801,7 @@
       mensagem('Não foi possível desfazer: já existe um registro chamado ' + item.registro.nome + '.');
       return;
     }
-    lista = R.ordenar(restaurada);
+    lista = ordenarLista(restaurada);
     persistir();
     enviarGravar(item.registro);
     if (H) { // desfazer = a exclusão não aconteceu: tira a entrada dela do histórico
@@ -820,7 +845,7 @@
       try { armazenamento.setItem(CHAVE_MIGRADO, '1'); } catch (e) { /* sem armazenamento: tudo bem */ }
     }
     if (!meta.doCache) jaConectou = true;
-    aplicarLista(R.ordenar(nova));
+    aplicarLista(ordenarLista(nova));
     persistir();
     statusPorMeta(meta);
   }
@@ -856,6 +881,7 @@
   };
 
   /* ---------- Início ---------- */
+  mostrarModoOrdem();
   aplicarLista(lista);
   persistir();
   verificarHorarios();
@@ -872,7 +898,7 @@
   // para uma aba não apagar o que a outra salvou.
   window.addEventListener('storage', function (ev) {
     if (ev.key !== R.CHAVE || !armazenamento || nuvem) return; // com a nuvem, ela mesma avisa
-    aplicarLista(R.ordenar(R.garantirOrdem(R.carregar(armazenamento))));
+    aplicarLista(ordenarLista(R.garantirOrdem(R.carregar(armazenamento))));
     verificarHorarios();
   });
 })();

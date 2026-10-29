@@ -259,21 +259,37 @@
 
   const coletor = new Intl.Collator('pt-BR', { sensitivity: 'base', numeric: true });
 
-  // Ordem de exibição: primeiro os de estado LIVRE ou OK; depois (e dentro de cada grupo) alfabética
-  // pelo nome, sem diferenciar maiúscula e acento ("Ágata" fica entre "Abel" e "Bia").
-  // Empate: a ordem de criação e, por fim, o id (igual em todo aparelho).
-  function comparar(a, b) {
-    const g = (tipoEstado(a.estado) ? 0 : 1) - (tipoEstado(b.estado) ? 0 : 1);
-    if (g) return g;
-    const n = coletor.compare(a.nome || '', b.nome || '');
-    if (n) return n;
-    const d = (a.ordem || 0) - (b.ordem || 0);
-    if (d) return d;
-    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  // Ordem de exibição. Em qualquer modo, os de estado LIVRE ou OK vêm primeiro; depois
+  // (e dentro de cada grupo) vale o modo:
+  //   'nome'    alfabética pelo nome, sem diferenciar maiúscula e acento ("Ágata" entre "Abel" e "Bia");
+  //   'horario' do menor para o maior horário (08:00 antes de 19:00). Quem não tem horário vai
+  //             para o fim do grupo, em ordem alfabética. Mesmo horário: a data (a mais cedo
+  //             primeiro; sem data vem antes) e depois o nome.
+  // Empate final: a ordem de criação e, por fim, o id (igual em todo aparelho).
+  function comparar(modo) {
+    return function (a, b) {
+      const g = (tipoEstado(a.estado) ? 0 : 1) - (tipoEstado(b.estado) ? 0 : 1);
+      if (g) return g;
+      if (modo === 'horario') {
+        const ha = a.horario || '', hb = b.horario || '';
+        if (ha !== hb) {
+          if (!ha) return 1;   // sem horário, para o fim
+          if (!hb) return -1;
+          return ha < hb ? -1 : 1; // "HH:MM" compara certo como texto
+        }
+        const da = a.data || '', db = b.data || '';
+        if (da !== db) return da < db ? -1 : 1; // "AAAA-MM-DD"; vazio fica antes
+      }
+      const n = coletor.compare(a.nome || '', b.nome || '');
+      if (n) return n;
+      const d = (a.ordem || 0) - (b.ordem || 0);
+      if (d) return d;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    };
   }
 
-  function ordenar(lista) {
-    return lista.slice().sort(comparar);
+  function ordenar(lista, modo) {
+    return lista.slice().sort(comparar(modo === 'horario' ? 'horario' : 'nome'));
   }
 
   // Registros antigos, sem "ordem", ganham uma pela posição em que estão.
