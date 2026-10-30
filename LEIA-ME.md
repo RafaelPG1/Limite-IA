@@ -14,6 +14,7 @@ Site simples (HTML, CSS e JavaScript puros, sem instalar nada) para cadastrar, e
 | `firebase-config.js` | Configuração pública do seu projeto Firebase (`limite-tempo`) |
 | `firestore.rules` | Regras do banco, para você colar no console do Firebase |
 | `historico.js` | Regras do histórico (registrar, filtrar) |
+| `icone.svg`, `icone-32.png`, `icone-180.png` | Ícone do site (aba do navegador e tela inicial do celular) |
 | `testes.js`, `testes-historico.js` | Testes automáticos das regras |
 
 ## Como abrir o site
@@ -37,6 +38,7 @@ Não precisa de servidor, internet nem instalação.
   - **Nome:** alfabética, sem diferenciar maiúscula nem acento (`Item 2` vem antes de `Item 10`).
   - Nos dois modos, o topo da lista é sempre: primeiro os `LIVRE`, depois os `OK`, depois todos os outros (cada grupo ordenado pelo modo escolhido). Ao adicionar ou editar, a linha vai sozinha para o lugar certo.
 - **Editar:** clique em Editar na linha. Se você mudar o **horário ou a data**, o "atingido" é recalculado do zero, como se fosse um registro novo: vale o dia e hora (se você mudou só o horário e a data era de um dia passado, a data vira hoje), e a chegada é anotada no histórico quando acontecer. Editar outros campos não anota nada. Cada campo mostra seu nome em cima (Nome, Observações, Projeto, Horário, Data, Estado) e se é opcional. `Enter` salva, `Esc` cancela. Dá para editar a qualquer momento.
+- **Excluir:** o botão Excluir abre uma janela perguntando se você quer mesmo apagar aquele registro (mostra o nome). O foco começa em **Cancelar**; `Esc` ou clicar fora também cancelam sem apagar. Depois de confirmar, o aviso "Desfazer" continua aparecendo por alguns segundos.
 - **Histórico:** botão **Histórico** no topo abre uma janela com o que aconteceu: criado, editado (mostra o que mudou, ex.: `Horário: 19:00 → 20:00`), excluído e horário atingido. Cada entrada guarda uma cópia de como o registro estava (projeto, horário, data, estado, observações). Três campos de filtro, que funcionam juntos:
   - **Nome:** só procura no nome.
   - **Projeto:** só procura no projeto.
@@ -49,6 +51,7 @@ Não precisa de servidor, internet nem instalação.
 - **Editar o horário:** a data **nunca muda sozinha**. Se você muda o horário e não mexe na data, o site pergunta em que dia ele vale: o dia que estava, ou o dia da próxima vez que esse horário acontece (a pergunta só aparece se os dois forem diferentes). "Voltar" deixa você digitar outra data. Se você mudar a data na própria edição, ela vale e não há pergunta. Cada dia tem 24h: dia 30 às 22h pode ser movido para o dia 29 por essa pergunta ou digitando a data.
 - **Regra única:** fica verde quando **data + horário** chegam, e continua verde até você editar. Para marcar algo que já passou hoje, digite a data de hoje (ex.: `29`).
 - **Tempo que falta:** enquanto o horário não chegou, aparece ao lado dele quanto falta (`faltam 1h 41min`, `faltam 12min 05s`, `faltam 1d 2h`). Atualiza sozinho a cada segundo e some quando o horário chega (aparece o selo "Atingido"). Usa o relógio do seu aparelho.
+- **Aviso na aba:** quando um horário chega **e você não está olhando a aba** (outra aba, outra janela ou minimizado), o ícone da aba ganha uma **bolinha verde grande** e o título vira `(1) Registros` (o número conta quantos chegaram). Ao voltar para a aba, volta ao normal. Se nada novo chegou, não há bolinha; horários que já estavam atingidos não contam. Limite: o navegador pode atrasar abas escondidas em até ~1 minuto. Não usa PWA, service worker nem servidor, então não guarda cache e não funciona com o navegador fechado. No Android funciona do mesmo jeito enquanto a página estiver aberta; com o Chrome fechado ou a tela apagada o sistema pode suspender a página e o aviso não aparece.
 
 ## Sincronizar computador e celular (Firebase)
 

@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title>Registros</title>
+  <link rel="icon" href="icone.svg" type="image/svg+xml">
+  <link rel="icon" href="icone-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="icone-180.png">
   <!-- Fonte opcional: sem internet o navegador usa a fonte do sistema e tudo funciona igual. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -146,6 +149,15 @@
     <div class="modal-rodape modal-rodape-direita">
       <button type="button" id="conf-cancelar" class="botao botao-sutil">Cancelar</button>
       <button type="button" id="conf-apagar" class="botao botao-perigo-cheio">Apagar tudo</button>
+    </div>
+  </dialog>
+
+  <dialog id="confirmar-excluir" class="modal modal-pequeno" aria-labelledby="exc-titulo" aria-describedby="exc-texto">
+    <div class="modal-topo"><h2 id="exc-titulo">Excluir registro?</h2></div>
+    <p id="exc-texto" class="conf-texto"></p>
+    <div class="modal-rodape modal-rodape-direita">
+      <button type="button" id="exc-cancelar" class="botao botao-sutil">Cancelar</button>
+      <button type="button" id="exc-confirmar" class="botao botao-perigo-cheio">Excluir</button>
     </div>
   </dialog>
 

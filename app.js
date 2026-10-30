@@ -546,6 +546,48 @@
   }
 
   /* ---------- Relógio e destaque automático ---------- */
+  /* ---------- Aviso na aba: bolinha verde no ícone e "(1)" no título ---------- */
+  // Só para horários que chegam enquanto você NÃO está olhando a aba (em outra aba, outra janela ou
+  // minimizado). Volta ao normal quando você volta para a aba. Sem horário novo, sem bolinha.
+  const avisados = new Set();
+  const TITULO_BASE = document.title;
+  const ICONE_AVISO = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#5b4bff"/>' +
+    '<rect x="10" y="15" width="30" height="8" rx="4" fill="#fff"/><rect x="10" y="28" width="20" height="8" rx="4" fill="#fff" fill-opacity=".72"/>' +
+    '<rect x="10" y="41" width="12" height="8" rx="4" fill="#fff" fill-opacity=".48"/>' +
+    '<circle cx="45" cy="45" r="18" fill="#22c55e" stroke="#fff" stroke-width="5"/></svg>');
+
+  function olhandoAba() {
+    return !document.hidden && (typeof document.hasFocus !== 'function' || document.hasFocus());
+  }
+  function mostrarAviso() {
+    const n = avisados.size;
+    document.title = n ? '(' + n + ') ' + TITULO_BASE : TITULO_BASE;
+    Array.prototype.forEach.call(document.querySelectorAll('link[rel~="icon"]'), function (l) {
+      if (l.dataset.original === undefined) l.dataset.original = l.getAttribute('href') + '|' + (l.getAttribute('type') || '');
+      if (n) {
+        l.setAttribute('type', 'image/svg+xml');
+        l.setAttribute('href', ICONE_AVISO);
+      } else {
+        const p = l.dataset.original.split('|');
+        l.setAttribute('href', p[0]);
+        if (p[1]) l.setAttribute('type', p[1]); else l.removeAttribute('type');
+      }
+    });
+  }
+  function avisarChegada(id) {
+    if (olhandoAba()) return;
+    avisados.add(id);
+    mostrarAviso();
+  }
+  function limparAviso() {
+    if (!avisados.size || !olhandoAba()) return;
+    avisados.clear();
+    mostrarAviso();
+  }
+  window.addEventListener('focus', limparAviso);
+  document.addEventListener('visibilitychange', limparAviso);
+
   function verificarHorarios() {
     const agora = new Date();
 
@@ -565,7 +607,7 @@
         const atingido = R.horarioAtingido(reg.horario, agora, reg.data);
         aplicarDestaque(tr, atingido);
         atualizarFaltam(tr, reg, agora);
-        if (jaAtingido.get(reg.id) === false && atingido) registrar('atingido', reg);
+        if (jaAtingido.get(reg.id) === false && atingido) { registrar('atingido', reg); avisarChegada(reg.id); }
         jaAtingido.set(reg.id, atingido);
       }
     }
@@ -791,7 +833,29 @@
     nova.querySelector('[data-acao="editar"]').focus();
   }
 
+  // Pede confirmação numa janela antes de excluir. Cancelar (ou Esc, ou clicar fora) não apaga nada.
   function excluir(tr) {
+    const reg = achar(tr.dataset.id);
+    const dlg = document.getElementById('confirmar-excluir');
+    if (!reg || !dlg) { excluirAgora(tr); return; }
+    const cancelar = document.getElementById('exc-cancelar'), confirmar = document.getElementById('exc-confirmar');
+    document.getElementById('exc-texto').textContent = 'O registro "' + reg.nome + '" será excluído. Logo depois você ainda pode clicar em Desfazer.';
+    function fechar() {
+      cancelar.onclick = confirmar.onclick = dlg.onclick = null;
+      if (typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open');
+    }
+    cancelar.onclick = function () {
+      fechar();
+      const b = tr.querySelector('[data-acao="excluir"]'); if (b) b.focus();
+    };
+    dlg.onclick = function (ev) { if (ev.target === dlg) cancelar.onclick(); };
+    confirmar.onclick = function () { fechar(); excluirAgora(tr); };
+    if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+    cancelar.focus();
+  }
+
+  function excluirAgora(tr) {
+    if (!tr.isConnected) return;
     const res = R.removerRegistro(lista, tr.dataset.id);
     if (!res.removido) return;
     lista = res.lista;
