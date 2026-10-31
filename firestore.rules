@@ -4,7 +4,10 @@
 // Console do Firebase > Firestore Database > aba Regras > cole tudo > Publicar.
 //
 // O que estas regras fazem:
-//  - só existe a coleção "registros"; qualquer outra coisa fica bloqueada;
+//  - só existem as coleções "registros" e "acesso"; qualquer outra coisa fica bloqueada;
+//  - "acesso/senha" guarda a senha única do site já transformada em hash (nunca a senha em texto):
+//    pode ser lida e criada UMA vez; trocar e apagar são bloqueados (para trocar a senha, apague
+//    o documento pelo console do Firebase, que ignora estas regras);
 //  - cada registro precisa ter exatamente os 7 campos esperados, com tipo e tamanho certos
 //    (assim ninguém grava lixo nem textos enormes);
 //  - ler, gravar e apagar não exigem login.
@@ -30,6 +33,19 @@ service cloud.firestore {
         && textoAte(d, 'estado', 80)
         && textoAte(d, 'obs', 200)
         && d.ordem is number;
+    }
+
+    function contaValida(d) {
+      return d.keys().hasOnly(['sal', 'hash']) && d.keys().hasAll(['sal', 'hash'])
+        && d.sal is string && d.sal.size() >= 16 && d.sal.size() <= 64
+        && d.hash is string && d.hash.size() >= 16 && d.hash.size() <= 64;
+    }
+
+    // Senha única do site: lê quem quiser; cria só se ainda não existe; nunca troca nem apaga.
+    match /acesso/{id} {
+      allow read: if id == 'senha';
+      allow create: if id == 'senha' && contaValida(request.resource.data);
+      allow update, delete: if false;
     }
 
     match /registros/{id} {

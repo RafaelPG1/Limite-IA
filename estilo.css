@@ -227,7 +227,8 @@ label {
 }
 .opcional { color: var(--tinta-2); font-weight: 500; }
 
-input[type="text"] {
+input[type="text"],
+input[type="password"] {
   width: 100%;
   min-height: 2.75rem;
   padding: 0.5rem 0.875rem;
@@ -723,3 +724,32 @@ tr.chegou td { animation: pulso-verde 1.6s var(--ease); }
 .botao-perigo-cheio { background: var(--perigo); color: var(--superficie); }
 .botao-perigo-cheio:hover { filter: brightness(1.08); }
 .modal-pequeno .modal-rodape { flex-direction: row; align-items: center; justify-content: flex-end; }
+
+/* ---------- Tela de senha ---------- */
+html.bloqueado .pagina { visibility: hidden; }
+.tela-senha {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: var(--fundo);
+  background-image: radial-gradient(60rem 28rem at 50% -12rem, var(--brilho), transparent 70%);
+}
+.tela-senha[hidden] { display: none; }
+.cartao-senha {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: min(24rem, 100%);
+  padding: 1.5rem;
+  background: var(--superficie);
+  border: 1px solid var(--linha);
+  border-radius: 1.25rem;
+  box-shadow: 0 10px 40px rgba(20, 21, 43, 0.12);
+}
+.cartao-senha h2 { margin: 0; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; }
+.senha-texto { margin: 0; color: var(--tinta-2); line-height: 1.5; font-size: 0.9375rem; }
+.cartao-senha .botao { width: 100%; }
+.cartao-senha .campo[hidden] { display: none; }

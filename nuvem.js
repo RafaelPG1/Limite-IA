@@ -17,9 +17,13 @@
   var BASE = 'https://www.gstatic.com/firebasejs/' + VERSAO + '/';
   var COLECAO = 'registros';
 
+  // A tela de senha (bloqueio.js) espera por isto: null = sem Firebase (senha só neste navegador);
+  // senão, um objeto { ler(), criar(conta) } para a senha única guardada em /acesso/senha.
+  var entregarSenha;
+  window.RegistrosSenhaNuvem = new Promise(function (resolver) { entregarSenha = resolver; });
   var app = window.RegistrosApp;
   var cfg = window.FIREBASE_CONFIG;
-  if (!app || !cfg || !cfg.projectId) return; // modo local, sem nuvem
+  if (!app || !cfg || !cfg.projectId) { entregarSenha(null); return; } // modo local, sem nuvem
 
   app.nuvemCarregando();
 
@@ -60,6 +64,36 @@
         return promessa.catch(function (erro) { app.nuvemErro(erro && erro.code); });
       }
 
+      // Senha única: documento /acesso/senha com { sal, hash } (nunca a senha). Criado uma vez;
+      // as regras do Firestore não deixam trocar nem apagar (só você, pelo console do Firebase).
+      var refSenha = F.doc(db, 'acesso', 'senha');
+      function comPrazo(promessa) {
+        return new Promise(function (ok, falha) {
+          var t = setTimeout(function () { falha({ code: 'unavailable' }); }, 10000);
+          promessa.then(function (v) { clearTimeout(t); ok(v); }, function (e) { clearTimeout(t); falha(e); });
+        });
+      }
+      entregarSenha({
+        // Lê direto do servidor (não do cache). Devolve { conta: {sal,hash} } ou { conta: null } se ainda não existe.
+        ler: function () {
+          return comPrazo(F.getDocFromServer(refSenha)).then(function (snap) {
+            return { conta: snap.exists() ? snap.data() : null };
+          });
+        },
+        // Cria só se ainda não existir (transação). { ok: true } | { ok: false, erro }
+        criar: function (conta) {
+          return comPrazo(F.runTransaction(db, function (t) {
+            return t.get(refSenha).then(function (snap) {
+              if (snap.exists()) { var e = new Error('ja-existe'); e.code = 'ja-existe'; throw e; }
+              t.set(refSenha, { sal: conta.sal, hash: conta.hash });
+            });
+          })).then(function () { return { ok: true }; }, function (e) {
+            var c = e && e.code;
+            return { ok: false, erro: c === 'ja-existe' ? 'ja-existe' : c === 'permission-denied' ? 'regras' : 'rede' };
+          });
+        },
+      });
+
       app.conectar({
         gravar: function (reg) {
           return tratar(F.setDoc(F.doc(colecao, reg.id), paraDocumento(reg)));
@@ -98,6 +132,8 @@
       });
     })
     .catch(function () {
+      var semSdk = function () { return Promise.reject({ code: 'nao-carregou' }); };
+      entregarSenha({ ler: semSdk, criar: function () { return Promise.resolve({ ok: false, erro: 'rede' }); } });
       app.nuvemFalhou(); // sem internet na primeira vez, ou bloqueio do endereço do Firebase
     });
 })();

@@ -15,7 +15,8 @@ Site simples (HTML, CSS e JavaScript puros, sem instalar nada) para cadastrar, e
 | `firestore.rules` | Regras do banco, para você colar no console do Firebase |
 | `historico.js` | Regras do histórico (registrar, filtrar) |
 | `icone.svg`, `icone-32.png`, `icone-180.png` | Ícone do site (aba do navegador e tela inicial do celular) |
-| `testes.js`, `testes-historico.js` | Testes automáticos das regras |
+| `senha.js`, `bloqueio.js` | Regras e tela da senha de acesso |
+| `testes.js`, `testes-historico.js`, `testes-senha.js` | Testes automáticos das regras |
 
 ## Como abrir o site
 
@@ -52,6 +53,16 @@ Não precisa de servidor, internet nem instalação.
 - **Regra única:** fica verde quando **data + horário** chegam, e continua verde até você editar. Para marcar algo que já passou hoje, digite a data de hoje (ex.: `29`).
 - **Tempo que falta:** enquanto o horário não chegou, aparece ao lado dele quanto falta (`faltam 1h 41min`, `faltam 12min 05s`, `faltam 1d 2h`). Atualiza sozinho a cada segundo e some quando o horário chega (aparece o selo "Atingido"). Usa o relógio do seu aparelho.
 - **Aviso na aba:** quando um horário chega **e você não está olhando a aba** (outra aba, outra janela ou minimizado), o ícone da aba ganha uma **bolinha verde grande** e o título vira `(1) Registros` (o número conta quantos chegaram). Ao voltar para a aba, volta ao normal. Se nada novo chegou, não há bolinha; horários que já estavam atingidos não contam. Limite: o navegador pode atrasar abas escondidas em até ~1 minuto. Não usa PWA, service worker nem servidor, então não guarda cache e não funciona com o navegador fechado. No Android funciona do mesmo jeito enquanto a página estiver aberta; com o Chrome fechado ou a tela apagada o sistema pode suspender a página e o aviso não aparece.
+- **Senha de acesso (trava simples, não é segurança):**
+  - **Uma senha só, para todos os aparelhos.** Ela fica no Firestore, no documento `acesso/senha`, e **não** como texto: o site guarda só `sal` e `hash` (PBKDF2-SHA-256), então o que aparece no console do Firebase são letras e números sem sentido, nunca a senha.
+  - No primeiro acesso (quando o documento ainda não existe) o site pede para **criar a senha** (mínimo de 4 caracteres, digitada duas vezes). Depois disso, em qualquer aparelho, a tela só pede a senha. As regras do Firestore **não deixam criar de novo, trocar nem apagar** o documento.
+  - Você fica **logado por 24 horas** neste aparelho, contadas do login (não renova sozinho). Passado isso, ou ao clicar em **Sair**, a senha é pedida de novo. O site aberto tranca sozinho quando vencer.
+  - **IMPORTANTE, faça uma vez antes de usar:** publique o `firestore.rules` novo (Console do Firebase > Firestore Database > aba Regras > cole o arquivo inteiro > Publicar). Enquanto as regras antigas estiverem lá, o site mostra "O Firebase ainda não aceita a senha" e fica trancado. Quem publica é você: o site não mexe nas regras.
+  - **Sem internet:** se o aparelho já entrou antes, confere com uma cópia do hash guardada nele e avisa. Aparelho novo sem internet não consegue criar nem conferir (mostra "Sem conexão" e o botão Tentar de novo).
+  - **Sem Firebase configurado** (`window.FIREBASE_CONFIG = null`): a senha vale só naquele navegador.
+  - **Esqueci a senha / quero trocar:** não há recuperação pelo site. No Console do Firebase, Firestore Database > coleção `acesso` > apague o documento `senha`. No próximo acesso o site pede para criar uma nova (aparelhos que já estão logados continuam até vencer as 24 h).
+  - **Limites:** é só uma trava. Quem lê o Firestore enxerga o hash (senha fraca se descobre por tentativa), quem usa as ferramentas do navegador consegue passar, e os registros no Firebase continuam sem proteção.
+  - Se o navegador não permitir guardar dados (modo privado, por exemplo), o site abre sem senha, porque não há onde guardar a sessão.
 
 ## Sincronizar computador e celular (Firebase)
 
@@ -108,10 +119,10 @@ A chave em `firebase-config.js` é pública por natureza do Firebase; não coloq
 **Comando:**
 
 ```
-node --test testes.js testes-historico.js
+node --test testes.js testes-historico.js testes-senha.js
 ```
 
-**Resultado esperado:** no final, `# pass 74` e `# fail 0`.
+**Resultado esperado:** no final, `# pass 88` e `# fail 0`.
 
 **Erros comuns:**
 - `node não é reconhecido` / `command not found`: o Node.js não está instalado, ou o terminal foi aberto antes da instalação. Instale e abra um terminal novo.
