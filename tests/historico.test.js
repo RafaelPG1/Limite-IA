@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const H = require('./historico.js');
+const H = require('../js/core/historico.js');
 
 const memoria = (inicial) => { const m = new Map(inicial || []); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, v) }; };
 const dia = (d, h = 10) => new Date(2026, 9, d, h, 0, 0).getTime();

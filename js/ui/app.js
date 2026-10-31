@@ -14,6 +14,7 @@
   const ICONES = {
     editar: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.5 2.5l3 3M2.5 13.5l.8-3.2 7.4-7.4 2.4 2.4-7.4 7.4-3.2.8z"/></svg>',
     excluir: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5h11M6 4.5V3a1 1 0 011-1h2a1 1 0 011 1v1.5M4 4.5l.6 8a1 1 0 001 .9h4.8a1 1 0 001-.9l.6-8M6.75 7v4M9.25 7v4"/></svg>',
+    anotar: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 2.5h7l2 2v9h-9zM5.5 6.5h5M5.5 9h5M5.5 11.5h3"/></svg>',
     salvar: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>',
     cancelar: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>',
     atingido: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M5.5 8.2l1.8 1.8 3.2-3.6"/></svg>',
@@ -122,7 +123,8 @@
     b.type = 'button';
     b.dataset.acao = acao;
     b.insertAdjacentHTML('afterbegin', ICONES[icone]); // SVG fixo, sem dados do usuário
-    b.appendChild(document.createTextNode(rotulo));
+    b.appendChild(criar('span', 'rotulo-botao', rotulo));
+    b.title = rotulo; // em telas médias só o ícone aparece; o título mostra o nome
     return b;
   }
 
@@ -215,14 +217,33 @@
     const tdAcoes = celula('acoes', 'Ações');
     const grupo = criar('div', 'acoes-grupo');
     grupo.appendChild(botao('editar', 'Editar', 'editar'));
+    const bNotas = botao('anotacoes', 'Anotações', 'anotar');
+    bNotas.appendChild(criar('span', 'contagem-nota'));
+    grupo.appendChild(bNotas);
     grupo.appendChild(botao('excluir', 'Excluir', 'excluir', 'botao-sutil botao-perigo'));
     tdAcoes.appendChild(grupo);
     tr.appendChild(tdAcoes);
+    atualizarContagemNotas(tr, reg.id);
 
     aplicarDestaque(tr, R.horarioAtingido(reg.horario, new Date(), reg.data));
     atualizarFaltam(tr, reg, new Date());
     return tr;
   }
+
+  // Anotações (anotacoes-tela.js) por registro: o botão mostra quantas existem.
+  function notasDe() { return window.RegistrosAnotacoesTela || null; }
+  function atualizarContagemNotas(tr, id) {
+    const T = notasDe();
+    const n = T ? T.contar(id) : 0;
+    const marca = tr.querySelector('.contagem-nota');
+    if (!marca) return;
+    marca.textContent = n ? String(n) : '';
+    const b = marca.closest('button');
+    if (b) b.setAttribute('aria-label', n ? 'Anotações (' + n + ')' : 'Anotações');
+  }
+  window.addEventListener('registros:notas', function () {
+    Array.prototype.forEach.call(el.corpo.children, function (tr) { if (tr.dataset.id) atualizarContagemNotas(tr, tr.dataset.id); });
+  });
 
   const MENSAGEM = {
     nome: 'O nome não pode ficar vazio.',
@@ -839,7 +860,10 @@
     const dlg = document.getElementById('confirmar-excluir');
     if (!reg || !dlg) { excluirAgora(tr); return; }
     const cancelar = document.getElementById('exc-cancelar'), confirmar = document.getElementById('exc-confirmar');
-    document.getElementById('exc-texto').textContent = 'O registro "' + reg.nome + '" será excluído. Logo depois você ainda pode clicar em Desfazer.';
+    const nNotas = notasDe() ? notasDe().contar(reg.id) : 0;
+    document.getElementById('exc-texto').textContent = 'O registro "' + reg.nome + '" será excluído' +
+      (nNotas ? ', junto com ' + (nNotas === 1 ? 'a anotação dele' : 'as ' + nNotas + ' anotações dele') : '') +
+      '. Logo depois você ainda pode clicar em Desfazer.';
     function fechar() {
       cancelar.onclick = confirmar.onclick = dlg.onclick = null;
       if (typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open');
@@ -865,7 +889,7 @@
     jaAtingido.delete(res.removido.id);
     tr.remove();
     atualizarVazio();
-    ultimoExcluido = { registro: res.removido, indice: res.indice };
+    ultimoExcluido = { registro: res.removido, indice: res.indice, notas: notasDe() ? notasDe().tirar(res.removido.id) : [] };
     mostrarToast('Excluído: ' + res.removido.nome);
     el.nome.focus();
   }
@@ -876,6 +900,7 @@
     const tr = alvo.closest('tr');
     switch (alvo.dataset.acao) {
       case 'editar': iniciarEdicao(tr); break;
+      case 'anotacoes': { const reg = achar(tr.dataset.id); if (reg && notasDe()) notasDe().abrir(reg.id, reg.nome, alvo); break; }
       case 'salvar': salvarEdicao(tr); break;
       case 'cancelar': cancelarEdicao(tr); break;
       case 'excluir': excluir(tr); break;
@@ -915,6 +940,7 @@
     lista = ordenarLista(restaurada);
     persistir();
     enviarGravar(item.registro);
+    if (item.notas && item.notas.length && notasDe()) notasDe().devolver(item.notas);
     if (H) { // desfazer = a exclusão não aconteceu: tira a entrada dela do histórico
       const i = historico.findIndex(function (e) { return e.tipo === 'excluido' && e.id === item.registro.id; });
       if (i !== -1) {

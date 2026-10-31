@@ -1,7 +1,7 @@
 // Testes da senha de acesso. Rode com: node --test testes-senha.js
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const S = require('./senha.js');
+const S = require('../js/core/senha.js');
 
 function armazenamentoFalso() {
   const m = new Map();

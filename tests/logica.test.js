@@ -4,7 +4,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const R = require('./logica.js');
+const R = require('../js/core/logica.js');
 
 // Armazenamento falso (imita o localStorage do navegador).
 function armazenamentoFalso() {

@@ -1,0 +1,10 @@
+{
+  "name": "registros",
+  "version": "1.0.0",
+  "description": "Tabela de registros com horário, estado, histórico e anotações (HTML, CSS e JavaScript puros).",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/logica.test.js tests/historico.test.js tests/senha.test.js tests/anotacoes.test.js"
+  },
+  "engines": { "node": ">=18" }
+}

@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <title>Registros</title>
-  <link rel="icon" href="icone.svg" type="image/svg+xml">
-  <link rel="icon" href="icone-32.png" type="image/png" sizes="32x32">
-  <link rel="apple-touch-icon" href="icone-180.png">
+  <link rel="icon" href="assets/icons/icone.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/icons/icone-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="assets/icons/icone-180.png">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#f3f4fb" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0a0d19" media="(prefers-color-scheme: dark)">
@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="estilo.css">
+  <link rel="stylesheet" href="css/estilo.css">
   <!-- Começa trancado; senha.js/bloqueio.js destrancam se houver sessão válida (evita piscar o conteúdo). -->
   <script>document.documentElement.classList.add('bloqueado');</script>
 </head>
@@ -132,6 +132,11 @@
         <p class="vazio-texto">Digite um nome acima e clique em Adicionar. Projeto, horário e estado podem ficar em branco.</p>
       </div>
     </section>
+    <footer class="rodape-versao">
+      <span>Versão <span id="versao-texto"></span></span>
+      <button type="button" id="versao-verificar" class="botao botao-sutil">Verificar atualização</button>
+      <span id="versao-resposta" role="status"></span>
+    </footer>
   </main>
 
   <div id="toast" class="toast" role="status" aria-live="polite" hidden>
@@ -178,6 +183,52 @@
     </div>
   </dialog>
 
+  <div id="aviso-versao" class="aviso-versao" role="status" hidden>
+    <span>Há uma versão nova do site.</span>
+    <button type="button" id="aviso-versao-atualizar" class="botao botao-primario">Atualizar</button>
+  </div>
+
+  <dialog id="anotacoes" class="modal" aria-labelledby="not-titulo">
+    <div class="modal-topo">
+      <h2 id="not-titulo">Anotações</h2>
+      <button type="button" id="not-fechar" class="botao botao-sutil" aria-label="Fechar anotações">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </button>
+    </div>
+    <form id="not-form" class="not-form" novalidate>
+      <div class="campo">
+        <label for="not-texto">Anotação <span class="opcional" id="not-contador"></span></label>
+        <textarea id="not-texto" rows="3" maxlength="1000" placeholder="Ex.: acabou o token, falar com o X"></textarea>
+      </div>
+      <p id="not-erro" class="erro" role="alert" hidden></p>
+      <div class="not-botoes">
+        <button type="submit" id="not-salvar" class="botao botao-primario">Salvar anotação</button>
+        <button type="button" id="not-cancelar-edicao" class="botao botao-sutil" hidden>Cancelar edição</button>
+      </div>
+    </form>
+    <div class="hist-filtros not-filtros">
+      <div class="campo">
+        <label for="not-f-texto">Buscar nas anotações</label>
+        <input id="not-f-texto" type="text" autocomplete="off" placeholder="Qualquer palavra">
+      </div>
+    </div>
+    <p id="not-contagem" class="hist-contagem" role="status"></p>
+    <ol id="not-lista" class="hist-lista"></ol>
+    <p id="not-vazio" class="hist-vazio" hidden></p>
+    <div class="modal-rodape">
+      <span class="hist-nota">Só neste aparelho · ficam até você excluir</span>
+    </div>
+  </dialog>
+
+  <dialog id="confirmar-nota" class="modal modal-pequeno" aria-labelledby="cn-titulo" aria-describedby="cn-texto">
+    <div class="modal-topo"><h2 id="cn-titulo">Excluir anotação?</h2></div>
+    <p id="cn-texto" class="conf-texto"></p>
+    <div class="modal-rodape modal-rodape-direita">
+      <button type="button" id="cn-cancelar" class="botao botao-sutil">Cancelar</button>
+      <button type="button" id="cn-confirmar" class="botao botao-perigo-cheio">Excluir</button>
+    </div>
+  </dialog>
+
   <dialog id="confirmar-excluir" class="modal modal-pequeno" aria-labelledby="exc-titulo" aria-describedby="exc-texto">
     <div class="modal-topo"><h2 id="exc-titulo">Excluir registro?</h2></div>
     <p id="exc-texto" class="conf-texto"></p>
@@ -197,13 +248,17 @@
     </div>
   </dialog>
 
-  <script src="senha.js"></script>
-  <script src="logica.js"></script>
-  <script src="historico.js"></script>
-  <script src="app.js"></script>
-  <script src="bloqueio.js"></script>
+  <script src="js/versao.js"></script>
+  <script src="js/core/senha.js"></script>
+  <script src="js/core/logica.js"></script>
+  <script src="js/core/historico.js"></script>
+  <script src="js/core/anotacoes.js"></script>
+  <script src="js/ui/app.js"></script>
+  <script src="js/ui/anotacoes-tela.js"></script>
+  <script src="js/ui/atualizar.js"></script>
+  <script src="js/ui/bloqueio.js"></script>
   <!-- Nuvem (opcional): sem firebase-config.js preenchido o site funciona só neste aparelho. -->
-  <script src="firebase-config.js"></script>
-  <script src="nuvem.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/nuvem/nuvem.js"></script>
 </body>
 </html>

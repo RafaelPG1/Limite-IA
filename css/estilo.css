@@ -230,7 +230,8 @@ label {
 .opcional { color: var(--tinta-2); font-weight: 500; }
 
 input[type="text"],
-input[type="password"] {
+input[type="password"],
+textarea {
   width: 100%;
   min-height: 2.75rem;
   padding: 0.5rem 0.875rem;
@@ -348,10 +349,9 @@ th:last-child, td.acoes { width: 1%; white-space: nowrap; text-align: right; }
 /* Colunas de largura fixa: a tabela não "pula" quando uma linha entra em edição. */
 @media (min-width: 901px) {
   table { table-layout: fixed; }
-  th:nth-child(1) { width: 30%; }
-  th:nth-child(2) { width: 20%; }
-  th:nth-child(4) { width: 19%; }
-  th:last-child { width: 15.5rem; }
+  th:nth-child(2) { width: 18%; }
+  th:nth-child(4) { width: 14%; }
+  th:last-child { width: 22.5rem; } /* Editar + Anotações (com contador) + Excluir + respiro; a coluna Nome ocupa o que sobrar */
 }
 
 .pessoa { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
@@ -758,3 +758,61 @@ html.bloqueado .pagina { visibility: hidden; }
 .senha-texto { margin: 0; color: var(--tinta-2); line-height: 1.5; font-size: 0.9375rem; }
 .cartao-senha .botao { width: 100%; }
 .cartao-senha .campo[hidden] { display: none; }
+
+/* ---------- Anotações ---------- */
+textarea { resize: vertical; min-height: 5rem; line-height: 1.45; font-family: inherit; }
+textarea:focus-visible { outline: none; border-color: var(--acento); box-shadow: 0 0 0 4px var(--acento-suave); }
+textarea::placeholder { color: var(--tinta-2); opacity: 1; font-weight: 500; }
+.not-form { display: grid; gap: 0.75rem; padding: 0 1.25rem 1rem; }
+.not-botoes { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.not-filtros { padding-top: 0.25rem; }
+.not-item { grid-template-columns: minmax(0, 1fr) auto; }
+.not-item .not-topo { grid-column: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.625rem; }
+.not-projeto { display: inline-block; padding: 0.125rem 0.625rem; border-radius: 999px; background: var(--acento-suave); color: var(--acento-forte); font-weight: 700; font-size: 0.8125rem; overflow-wrap: anywhere; }
+.not-quando { color: var(--tinta-2); font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+.not-texto { grid-column: 1 / -1; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
+.not-acoes { grid-column: 2; grid-row: 1; display: flex; gap: 0.25rem; }
+@media (prefers-color-scheme: dark) { .not-projeto { color: var(--tinta); } }
+/* Anotações: a janela inteira rola (o formulário ocupa espaço), não só a lista. */
+#anotacoes { overflow-y: auto; }
+#anotacoes > * { flex-shrink: 0; }
+#anotacoes .hist-lista { flex: none; overflow: visible; }
+#anotacoes .modal-topo { position: sticky; top: 0; z-index: 1; background: var(--superficie); }
+.not-botoes .botao[hidden] { display: none; }
+
+/* ---------- Versão e aviso de atualização ---------- */
+.rodape-versao { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; margin-top: 2rem; color: var(--tinta-2); font-size: 0.8125rem; }
+.rodape-versao .botao { min-height: 2rem; padding: 0.25rem 0.625rem; }
+.aviso-versao {
+  position: fixed;
+  left: 50%;
+  top: calc(0.75rem + env(safe-area-inset-top));
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: max-content;
+  max-width: calc(100vw - 1.5rem);
+  padding: 0.5rem 0.5rem 0.5rem 1rem;
+  background: var(--superficie);
+  color: var(--tinta);
+  border: 1px solid var(--acento);
+  border-radius: 999px;
+  box-shadow: var(--sombra);
+  font-weight: 600;
+}
+.aviso-versao[hidden] { display: none; }
+html.bloqueado .aviso-versao { display: none; }
+.rodape-versao .botao[hidden] { display: none; }
+
+/* Botão "Anotações" da linha: mostra quantas anotações o registro tem */
+.contagem-nota { display: none; min-width: 1.125rem; height: 1.125rem; padding: 0 0.3125rem; margin-left: 0.25rem; border-radius: 999px; background: var(--acento); color: #fff; font-size: 0.6875rem; font-weight: 700; line-height: 1.125rem; text-align: center; font-variant-numeric: tabular-nums; }
+.contagem-nota:not(:empty) { display: inline-block; }
+.not-filtros .campo[hidden] { display: none; }
+
+/* Telas médias: a coluna Ações mostra só os ícones (o nome fica no título e no leitor de tela) */
+@media (min-width: 901px) and (max-width: 1439px) {
+  td.acoes .rotulo-botao { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  th:last-child { width: 12rem; }
+}
