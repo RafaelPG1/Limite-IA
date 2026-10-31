@@ -9,12 +9,8 @@
   <link rel="icon" href="assets/icons/icone-32.png" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="assets/icons/icone-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#f3f4fb" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0a0d19" media="(prefers-color-scheme: dark)">
-  <!-- Fonte opcional: sem internet o navegador usa a fonte do sistema e tudo funciona igual. -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#f4f5f8" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#13151a" media="(prefers-color-scheme: dark)">
   <link rel="stylesheet" href="css/estilo.css">
   <!-- Começa trancado; senha.js/bloqueio.js destrancam se houver sessão válida (evita piscar o conteúdo). -->
   <script>document.documentElement.classList.add('bloqueado');</script>
@@ -84,7 +80,7 @@
       </div>
       <div class="campo campo-data">
         <label for="novo-data">Data <span class="opcional">(automática)</span></label>
-        <input id="novo-data" name="data" type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="vazio = automática" data-mascara="data" aria-describedby="erro-data">
+        <input id="novo-data" name="data" type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="automática" data-mascara="data" aria-describedby="erro-data">
         <p id="erro-data" class="erro" data-campo="data" role="alert" hidden>Data inválida. Use o dia (27) ou dia/mês (27/10).</p>
       </div>
       <div class="campo campo-estado">

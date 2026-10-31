@@ -322,7 +322,7 @@
     const tdHorario = celula('horario', 'Horário');
     const pilha = criar('div', 'pilha');
     entradaMascarada(pilha, 'horario', 'Horário', true, reg.horario, 'hora', '19 ou 19:30', 5);
-    entradaMascarada(pilha, 'data', 'Data', false, R.dataParaTela(reg.data, new Date()), 'data', 'vazio = automática', 10);
+    entradaMascarada(pilha, 'data', 'Data', false, R.dataParaTela(reg.data, new Date()), 'data', 'automática', 10);
     tdHorario.appendChild(pilha);
     tr.appendChild(tdHorario);
 

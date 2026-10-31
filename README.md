@@ -11,6 +11,7 @@ registros/
 ├── manifest.webmanifest     manifesto do app instalável
 ├── sw.js                    service worker (fica na raiz por causa do escopo)
 ├── package.json             comando `npm test`
+├── PRODUCT.md / DESIGN.md   contexto do produto e sistema visual (cores, formas, tipografia)
 ├── css/
 │   └── estilo.css           visual (cores no começo do arquivo)
 ├── js/
