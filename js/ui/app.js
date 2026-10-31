@@ -809,7 +809,7 @@
     voltar.onclick = function () { fechar(); const c = tr.querySelector('input[name="data"]'); if (c) c.focus(); };
     dlg.onclose = function () { manter.onclick = usar.onclick = voltar.onclick = null; };
     if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
-    voltar.focus();
+    usar.focus(); // Enter confirma o próximo dia; Esc ou "Voltar" deixam digitar outra data
     return true;
   }
 
