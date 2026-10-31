@@ -80,7 +80,7 @@
 /* ---------- Base ---------- */
 *, *::before, *::after { box-sizing: border-box; }
 
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; background: var(--fundo); }
 
 body {
   min-height: 100vh;
@@ -123,7 +123,9 @@ h1 {
 .pagina {
   max-width: 72rem;
   margin: 0 auto;
-  padding: 2.5rem 1.25rem 5rem;
+  /* Sob as barras do celular (recorte, status, navegação): o conteúdo desvia delas, o fundo continua. */
+  padding: max(2.5rem, calc(env(safe-area-inset-top) + 1rem)) max(1.25rem, env(safe-area-inset-right))
+           calc(5rem + env(safe-area-inset-bottom)) max(1.25rem, env(safe-area-inset-left));
 }
 
 /* ---------- Topo: título, contagem e relógio ---------- */
@@ -503,7 +505,7 @@ tr.chegou td { animation: pulso-verde 1.6s var(--ease); }
 .toast {
   position: fixed;
   left: 50%;
-  bottom: 1.25rem;
+  bottom: calc(1.25rem + env(safe-area-inset-bottom));
   z-index: 10;
   display: flex;
   align-items: center;
@@ -536,7 +538,10 @@ tr.chegou td { animation: pulso-verde 1.6s var(--ease); }
 }
 
 @media (max-width: 900px) {
-  .pagina { padding: 1.5rem 0.875rem 5rem; }
+  .pagina {
+    padding: max(1.5rem, calc(env(safe-area-inset-top) + 1rem)) max(0.875rem, env(safe-area-inset-right))
+             calc(5rem + env(safe-area-inset-bottom)) max(0.875rem, env(safe-area-inset-left));
+  }
   h1 { font-size: 1.625rem; }
   .relogio { font-size: 2.25rem; }
   .segundos { font-size: 1.125rem; }
