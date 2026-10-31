@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Instalar Registros</title>
+  <link rel="icon" href="icone.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#5b4bff">
+  <link rel="stylesheet" href="estilo.css">
+  <style>
+    .diag { max-width: 36rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+    .diag h1 { margin: 0 0 0.5rem; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; }
+    .diag p { color: var(--tinta-2); line-height: 1.5; }
+    .itens { list-style: none; margin: 1rem 0; padding: 0; display: grid; gap: 0.5rem; }
+    .item { display: grid; grid-template-columns: 1.5rem 1fr; gap: 0.5rem; padding: 0.75rem 0.875rem; background: var(--superficie); border: 1px solid var(--linha); border-radius: 0.875rem; }
+    .item b { display: block; }
+    .item small { color: var(--tinta-2); line-height: 1.4; }
+    .marca { font-weight: 800; }
+    .item[data-ok="sim"] .marca { color: var(--verde-tinta); }
+    .item[data-ok="nao"] .marca { color: var(--perigo); }
+    .item[data-ok="?"] .marca { color: var(--tinta-2); }
+    .acoes { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+    .acoes .botao[hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <main class="diag">
+    <h1>Instalar o Registros</h1>
+    <p>Esta página confere, no seu aparelho, o que o Chrome precisa para instalar o site como app. Se algo estiver com ✗, é isso que está impedindo.</p>
+    <ul class="itens" id="itens"></ul>
+    <div class="acoes">
+      <button type="button" id="instalar" class="botao botao-primario" hidden>Instalar agora</button>
+      <button type="button" id="de-novo" class="botao botao-contorno">Conferir de novo</button>
+      <a class="botao botao-sutil" href="index.html">Voltar ao site</a>
+    </div>
+    <p id="dica"></p>
+  </main>
+  <script>
+  (function () {
+    'use strict';
+    var lista = document.getElementById('itens');
+    var botao = document.getElementById('instalar');
+    var dica = document.getElementById('dica');
+    var evento = null;
+    window.addEventListener('beforeinstallprompt', function (ev) {
+      ev.preventDefault(); evento = ev; botao.hidden = false; desenhar();
+    });
+    window.addEventListener('appinstalled', function () { evento = null; botao.hidden = true; desenhar(); });
+    botao.addEventListener('click', function () {
+      if (!evento) return;
+      evento.prompt();
+      evento.userChoice.then(function () { evento = null; botao.hidden = true; desenhar(); });
+    });
+    document.getElementById('de-novo').addEventListener('click', function () { desenhar(); });
+
+    function item(ok, titulo, detalhe) {
+      var li = document.createElement('li');
+      li.className = 'item';
+      li.dataset.ok = ok === true ? 'sim' : ok === false ? 'nao' : '?';
+      var m = document.createElement('span'); m.className = 'marca'; m.textContent = ok === true ? '✓' : ok === false ? '✗' : '?';
+      var d = document.createElement('div');
+      var b = document.createElement('b'); b.textContent = titulo;
+      var s = document.createElement('small'); s.textContent = detalhe;
+      d.appendChild(b); d.appendChild(s); li.appendChild(m); li.appendChild(d);
+      return li;
+    }
+    function ok(r) { return r && r.ok; }
+
+    function desenhar() {
+      lista.textContent = '';
+      var linhas = [];
+      var seguro = window.isSecureContext === true;
+      linhas.push(item(seguro, 'Endereço seguro (https)', seguro ? location.origin : 'O endereço ' + location.origin + ' não é seguro. O Chrome só instala site em https (ou localhost).'));
+      var emApp = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      linhas.push(item(emApp ? true : null, 'Já está aberto como app?', emApp ? 'Sim: você já está usando o app instalado.' : 'Não: está aberto numa aba do navegador.'));
+      linhas.forEach(function (l) { lista.appendChild(l); });
+
+      var mlink = document.querySelector('link[rel="manifest"]');
+      fetch(mlink.href, { cache: 'no-store' }).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      }).then(function (m) {
+        lista.appendChild(item(true, 'Manifesto encontrado', 'Nome: ' + m.name + ' · abre em: ' + m.start_url + ' · modo: ' + m.display));
+        var icones = m.icons || [];
+        return Promise.all(icones.map(function (i) {
+          return fetch(new URL(i.src, mlink.href), { cache: 'no-store' }).then(function (r) { return { src: i.src, tam: i.sizes, ok: r.ok, status: r.status }; }, function () { return { src: i.src, tam: i.sizes, ok: false, status: 'erro' }; });
+        })).then(function (rs) {
+          var falta = rs.filter(function (r) { return !r.ok; });
+          var t192 = icones.some(function (i) { return /192x192/.test(i.sizes || ''); });
+          var t512 = icones.some(function (i) { return /512x512/.test(i.sizes || ''); });
+          lista.appendChild(item(!falta.length && t192 && t512, 'Ícones do app (192 e 512)',
+            falta.length ? 'Não abriram: ' + falta.map(function (r) { return r.src + ' (' + r.status + ')'; }).join(', ') + '. Suba esses arquivos para o site.' : (t192 && t512 ? rs.length + ' ícones abrem normalmente.' : 'Faltam ícones de 192x192 e 512x512 no manifesto.')));
+        });
+      }).catch(function (e) {
+        lista.appendChild(item(false, 'Manifesto encontrado', 'manifest.webmanifest não abriu (' + e.message + '). Suba esse arquivo para o mesmo lugar do index.html.'));
+      }).then(function () {
+        if (!('serviceWorker' in navigator)) { lista.appendChild(item(false, 'Service worker', 'Este navegador não tem service worker.')); return; }
+        return navigator.serviceWorker.getRegistration().then(function (reg) {
+          var ativo = !!(reg && reg.active);
+          lista.appendChild(item(ativo, 'Service worker (sw.js) ativo', ativo ? 'Escopo: ' + reg.scope : (reg ? 'Registrado, ainda ativando: espere uns segundos e toque em "Conferir de novo".' : 'Não registrado. Abra o index.html (ele registra o sw.js) e volte aqui; confira se sw.js foi enviado ao site.')));
+        });
+      }).then(function () {
+        lista.appendChild(item(evento ? true : null, 'O Chrome liberou a instalação', evento ? 'Sim: toque em "Instalar agora".' : 'Ainda não. Se tudo acima está ✓: recarregue a página, aguarde alguns segundos. Se o app já foi instalado antes, o Chrome não oferece de novo (desinstale primeiro). Em aba anônima nunca oferece.'));
+        dica.textContent = evento ? '' : 'Se mesmo assim aparecer "Não é possível instalar o app": desinstale o app antigo (se existir), limpe os dados do site em Configurações do Chrome > Configurações do site, recarregue e tente de novo. Em celulares sem os Serviços do Google Play o Android também recusa.';
+      });
+    }
+    desenhar();
+  })();
+  </script>
+</body>
+</html>

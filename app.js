@@ -1012,4 +1012,11 @@
     aplicarLista(ordenarLista(R.garantirOrdem(R.carregar(armazenamento))));
     verificarHorarios();
   });
+
+  // Permite "Instalar app" no Chrome (sw.js não guarda cache nenhum). Só vale em http(s), não ao abrir o arquivo direto.
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () { /* sem instalação, o site funciona igual */ });
+    });
+  }
 })();

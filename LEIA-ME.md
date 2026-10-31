@@ -15,6 +15,8 @@ Site simples (HTML, CSS e JavaScript puros, sem instalar nada) para cadastrar, e
 | `firestore.rules` | Regras do banco, para você colar no console do Firebase |
 | `historico.js` | Regras do histórico (registrar, filtrar) |
 | `icone.svg`, `icone-32.png`, `icone-180.png` | Ícone do site (aba do navegador e tela inicial do celular) |
+| `instalar.html` | Página que confere por que o app não instala |
+| `manifest.webmanifest`, `sw.js`, `icone-192.png`, `icone-512.png`, `icone-512-maskable.png` | Permitem **Instalar app** no Chrome (veja abaixo) |
 | `senha.js`, `bloqueio.js` | Regras e tela da senha de acesso |
 | `testes.js`, `testes-historico.js`, `testes-senha.js` | Testes automáticos das regras |
 
@@ -128,3 +130,15 @@ node --test testes.js testes-historico.js testes-senha.js
 - `node não é reconhecido` / `command not found`: o Node.js não está instalado, ou o terminal foi aberto antes da instalação. Instale e abra um terminal novo.
 - `Cannot find module './logica.js'`: o terminal está na pasta errada. Confira com `dir` (Windows) ou `ls` (Mac/Linux): `logica.js` deve aparecer na lista.
 - `# fail` maior que 0: você alterou `logica.js`. O nome do teste que falhou aparece na saída e diz qual regra quebrou.
+
+
+## Instalar como app (Chrome)
+
+O site pode ser instalado como app, com ícone próprio e janela sem barra de endereço (no Android, na tela inicial).
+
+- **Precisa de um endereço https** (o site já publicado). Abrindo o arquivo `index.html` direto do computador **não** instala.
+- **Android (Chrome):** abra o site > menu ⋮ > **Instalar app** (ou "Adicionar à tela inicial"). Pode aparecer sozinho um aviso "Instalar".
+- **Computador (Chrome ou Edge):** ícone de instalar no canto direito da barra de endereço, ou menu > **Instalar Registros**.
+- **Não guarda cache.** O `sw.js` é mínimo de propósito: não salva nenhuma página nem arquivo, então o app instalado sempre carrega a versão mais nova do site (não repete o problema de ficar preso numa versão antiga). O preço é que **sem internet o app não abre**.
+- A senha e a sessão de 24 h continuam valendo no app (o app pode ter armazenamento separado do Chrome comum e pedir a senha uma vez).
+- Depois de atualizar os arquivos no site, feche e abra o app para pegar a versão nova.
