@@ -74,7 +74,7 @@
       var linhas = [];
       var seguro = window.isSecureContext === true;
       linhas.push(item(seguro, 'Endereço seguro (https)', seguro ? location.origin : 'O endereço ' + location.origin + ' não é seguro. O Chrome só instala site em https (ou localhost).'));
-      var emApp = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      var emApp = window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches || window.navigator.standalone === true;
       linhas.push(item(emApp ? true : null, 'Já está aberto como app?', emApp ? 'Sim: você já está usando o app instalado.' : 'Não: está aberto numa aba do navegador.'));
       linhas.forEach(function (l) { lista.appendChild(l); });
 
