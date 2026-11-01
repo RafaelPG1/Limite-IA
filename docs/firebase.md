@@ -35,11 +35,11 @@ A chave em `js/firebase-config.js` é pública por natureza do Firebase; não co
 
 - **Senha de acesso (trava simples, não é segurança):**
   - **Uma senha só, para todos os aparelhos.** Ela fica no Firestore, no documento `acesso/senha`, e **não** como texto: o site guarda só `sal` e `hash` (PBKDF2-SHA-256), então o que aparece no console do Firebase são letras e números sem sentido, nunca a senha.
-  - No primeiro acesso (quando o documento ainda não existe) o site pede para **criar a senha** (mínimo de 4 caracteres, digitada duas vezes). Depois disso, em qualquer aparelho, a tela só pede a senha. As regras do Firestore **não deixam criar de novo, trocar nem apagar** o documento.
+  - **O site só LÊ a senha** (um `get` do documento) e confere o que você digitou. Ele nunca cria, troca nem apaga esse documento, e as regras do Firestore também bloqueiam qualquer escrita nele. Se o documento não existir, o site mostra "Não há senha cadastrada no Firebase" e não deixa criar.
   - Você fica **logado por 24 horas** neste aparelho, contadas do login (não renova sozinho). Passado isso, ou ao clicar em **Sair**, a senha é pedida de novo. O site aberto tranca sozinho quando vencer.
   - **IMPORTANTE, faça uma vez antes de usar:** publique o `firebase/firestore.rules` novo (Console do Firebase > Firestore Database > aba Regras > cole o arquivo inteiro > Publicar). Enquanto as regras antigas estiverem lá, o site mostra "O Firebase ainda não aceita a senha" e fica trancado. Quem publica é você: o site não mexe nas regras.
-  - **Sem internet:** se o aparelho já entrou antes, confere com uma cópia do hash guardada nele e avisa. Aparelho novo sem internet não consegue criar nem conferir (mostra "Sem conexão" e o botão Tentar de novo).
+  - **Sem internet:** se o aparelho já entrou antes, confere com uma cópia do hash guardada nele e avisa. Aparelho novo sem internet não consegue conferir (mostra "Sem conexão" e o botão Tentar de novo).
   - **Sem Firebase configurado** (`window.FIREBASE_CONFIG = null`): a senha vale só naquele navegador.
-  - **Esqueci a senha / quero trocar:** não há recuperação pelo site. No Console do Firebase, Firestore Database > coleção `acesso` > apague o documento `senha`. No próximo acesso o site pede para criar uma nova (aparelhos que já estão logados continuam até vencer as 24 h).
+  - **Cadastrar ou trocar a senha:** só pelo Console do Firebase (Firestore Database > coleção `acesso` > documento `senha`, com os campos de texto `sal` e `hash`). O site não faz isso.
   - **Limites:** é só uma trava. Quem lê o Firestore enxerga o hash (senha fraca se descobre por tentativa), quem usa as ferramentas do navegador consegue passar, e os registros no Firebase continuam sem proteção.
   - Se o navegador não permitir guardar dados (modo privado, por exemplo), o site abre sem senha, porque não há onde guardar a sessão.

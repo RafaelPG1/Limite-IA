@@ -33,13 +33,14 @@
     'ja-existe': 'Alguém já criou a senha. Digite-a para entrar.',
     'sem-armazenamento': 'Não foi possível guardar a sessão neste navegador.',
     rede: 'Sem conexão com o Firebase. Conecte-se à internet e tente de novo.',
+    'sem-senha': 'Não há senha cadastrada no Firebase (documento acesso/senha). O site só lê a senha, não cria nem altera. Cadastre-a pelo console do Firebase.',
     regras: 'O Firebase ainda não aceita a senha. Publique o arquivo firestore.rules novo (passo a passo no LEIA-ME).',
   };
 
   // modo: '' (destrancado) | 'carregando' | 'entrar' | 'criar' | 'erro'
   let modo = '';
   let aberto = false;      // a página já foi destrancada
-  let nuvem = null;        // { ler, criar } ou null (sem Firebase)
+  let nuvem = null;        // { ler } ou null (sem Firebase)
   let contaNuvem = null;   // conta lida do Firestore (ou do cache, sem conexão)
   let tentativa = 0;       // descarta respostas de conferências antigas
 
@@ -82,7 +83,11 @@
         const c = S.contaValida(res && res.conta);
         if (c) { contaNuvem = c; S.guardarConta(arm, c); mostrar('entrar'); }
         else if (res && res.conta) { mostrar('erro', 'rede'); } // documento estranho: não deixa criar por cima
-        else { contaNuvem = null; S.limparConta(arm); mostrar('criar'); }
+        else if (S.existeConta(arm)) { // a nuvem não tem senha, mas este aparelho já tem a sua: nunca apaga nem pede para criar outra
+          contaNuvem = null;
+          mostrar('entrar', '', 'Digite a senha para entrar (a que já está guardada neste aparelho).');
+        }
+        else { contaNuvem = null; mostrar('erro', 'sem-senha'); } // o site nunca cria a senha na nuvem
       }, function (e) {
         if (minha !== tentativa) return;
         if (S.existeConta(arm)) { // sem conexão: usa a cópia guardada neste aparelho
@@ -142,7 +147,7 @@
     const agora = new Date();
     const criando = modo === 'criar';
     const pedido = criando
-      ? S.criar(arm, campo1.value, campo2.value, agora, nuvem ? nuvem.criar : null)
+      ? S.criar(arm, campo1.value, campo2.value, agora, null)
       : S.entrar(arm, campo1.value, agora, contaNuvem);
     enviar.disabled = true;
     pedido.then(function (res) {

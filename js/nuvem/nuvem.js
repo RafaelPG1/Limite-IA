@@ -18,7 +18,7 @@
   var COLECAO = 'registros';
 
   // A tela de senha (bloqueio.js) espera por isto: null = sem Firebase (senha só neste navegador);
-  // senão, um objeto { ler(), criar(conta) } para a senha única guardada em /acesso/senha.
+  // senão, um objeto { ler() } para a senha única guardada em /acesso/senha (só leitura: o site nunca cria, troca nem apaga).
   var entregarSenha;
   window.RegistrosSenhaNuvem = new Promise(function (resolver) { entregarSenha = resolver; });
   var app = window.RegistrosApp;
@@ -64,8 +64,8 @@
         return promessa.catch(function (erro) { app.nuvemErro(erro && erro.code); });
       }
 
-      // Senha única: documento /acesso/senha com { sal, hash } (nunca a senha). Criado uma vez;
-      // as regras do Firestore não deixam trocar nem apagar (só você, pelo console do Firebase).
+      // Senha única: documento /acesso/senha com { sal, hash } (nunca a senha). O site SÓ LÊ;
+      // quem cria, troca ou apaga é você, pelo console do Firebase.
       var refSenha = F.doc(db, 'acesso', 'senha');
       function comPrazo(promessa) {
         return new Promise(function (ok, falha) {
@@ -78,18 +78,6 @@
         ler: function () {
           return comPrazo(F.getDocFromServer(refSenha)).then(function (snap) {
             return { conta: snap.exists() ? snap.data() : null };
-          });
-        },
-        // Cria só se ainda não existir (transação). { ok: true } | { ok: false, erro }
-        criar: function (conta) {
-          return comPrazo(F.runTransaction(db, function (t) {
-            return t.get(refSenha).then(function (snap) {
-              if (snap.exists()) { var e = new Error('ja-existe'); e.code = 'ja-existe'; throw e; }
-              t.set(refSenha, { sal: conta.sal, hash: conta.hash });
-            });
-          })).then(function () { return { ok: true }; }, function (e) {
-            var c = e && e.code;
-            return { ok: false, erro: c === 'ja-existe' ? 'ja-existe' : c === 'permission-denied' ? 'regras' : 'rede' };
           });
         },
       });
@@ -133,7 +121,7 @@
     })
     .catch(function () {
       var semSdk = function () { return Promise.reject({ code: 'nao-carregou' }); };
-      entregarSenha({ ler: semSdk, criar: function () { return Promise.resolve({ ok: false, erro: 'rede' }); } });
+      entregarSenha({ ler: semSdk });
       app.nuvemFalhou(); // sem internet na primeira vez, ou bloqueio do endereço do Firebase
     });
 })();
