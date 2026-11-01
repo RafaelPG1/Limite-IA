@@ -1,13 +1,16 @@
-// firestore.rules — regras para o banco do site Registros.
+// firestore.rules — regras para o banco do site Registros (registros, anotações e senha).
 //
 // ESTE ARQUIVO É SÓ PARA VOCÊ COPIAR: nada foi publicado.
 // Console do Firebase > Firestore Database > aba Regras > cole tudo > Publicar.
 //
 // O que estas regras fazem:
-//  - só existem as coleções "registros" e "acesso"; qualquer outra coisa fica bloqueada;
+//  - só existem as coleções "registros", "anotacoes" e "acesso"; qualquer outra coisa fica bloqueada;
 //  - "acesso/senha" guarda a senha única do site já transformada em hash (nunca a senha em texto):
 //    o site SÓ LÊ: criar, trocar e apagar pelo site são bloqueados (você cadastra, troca ou apaga
 //    o documento só pelo console do Firebase, que ignora estas regras);
+//  - "anotacoes": uma anotação por documento, SÓ TEXTO, com exatamente 4 campos (registroId, texto,
+//    t, editada), texto de 1 a 200 000 letras; ao editar, o registro e a data de criação não mudam;
+//  - "acesso" não pode ser listado (só lido pelo nome "senha") e ninguém escreve nele pelo site;
 //  - cada registro precisa ter exatamente os 7 campos esperados, com tipo e tamanho certos
 //    (assim ninguém grava lixo nem textos enormes);
 //  - ler, gravar e apagar não exigem login.
@@ -35,10 +38,29 @@ service cloud.firestore {
         && d.ordem is number;
     }
 
-    // Senha única do site: somente leitura. Nenhuma escrita pelo site.
+    function notaValida(d) {
+      return d.keys().hasOnly(['registroId', 'texto', 't', 'editada'])
+        && d.keys().hasAll(['registroId', 'texto', 't', 'editada'])
+        && d.registroId is string && d.registroId.size() > 0 && d.registroId.size() <= 64
+        && d.texto is string && d.texto.size() > 0 && d.texto.size() <= 200000
+        && d.t is number && d.editada is number;
+    }
+
+    // Senha única do site: somente leitura. Nenhuma escrita pelo site e nenhuma listagem.
     match /acesso/{id} {
-      allow read: if id == 'senha';
+      allow get: if id == 'senha';
+      allow list: if false;
       allow create, update, delete: if false;
+    }
+
+    // Anotações (só texto). Sem login, como os registros: quem tem o endereço do site pode ler.
+    match /anotacoes/{id} {
+      allow read: if true;
+      allow create: if id.size() <= 64 && notaValida(request.resource.data);
+      allow update: if notaValida(request.resource.data)
+        && request.resource.data.registroId == resource.data.registroId
+        && request.resource.data.t == resource.data.t;
+      allow delete: if true;
     }
 
     match /registros/{id} {

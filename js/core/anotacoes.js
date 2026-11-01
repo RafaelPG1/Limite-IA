@@ -3,7 +3,7 @@
  *
  * Cada anotação: { id, registroId, texto, t, editada }
  *   registroId: id do registro (o "nome" da tabela) a que a anotação pertence
- *   texto:      a anotação, só texto (até 1000 letras; quebras de linha são mantidas)
+ *   texto:      a anotação, só texto (até 200 mil letras, o teto seguro de um documento do Firestore; quebras de linha são mantidas)
  *   t:          quando foi criada (milissegundos); editada: quando foi alterada pela última vez (ou 0)
  *
  * Ficam só neste aparelho (localStorage), da mais nova para a mais antiga, no máximo 300 no total.
@@ -16,7 +16,7 @@
   'use strict';
 
   var CHAVE = 'registros:anotacoes:v2';
-  var MAX_TEXTO = 1000;
+  var MAX_TEXTO = 200000;
   var MAXIMO = 300;
 
   function semAcento(s) {

@@ -6,11 +6,15 @@ const N = require('../js/core/anotacoes.js');
 const quando = (h, m) => new Date(2026, 9, 30, h, m || 0, 0);
 const ids = () => { let i = 0; return () => 'n' + (++i); };
 
-test('criar: exige registro e texto; limite de tamanho', () => {
+test('criar: exige registro e texto; limite de 200 mil letras', () => {
   assert.deepEqual(N.criar([], { registroId: '', texto: 'x' }, quando(10)).erros, ['registro-vazio']);
   assert.deepEqual(N.criar([], { registroId: 'r1', texto: '   ' }, quando(10)).erros, ['texto-vazio']);
-  assert.deepEqual(N.criar([], { registroId: 'r1', texto: 'a'.repeat(1001) }, quando(10)).erros, ['texto-longo']);
-  assert.equal(N.criar([], { registroId: 'r1', texto: 'a'.repeat(1000) }, quando(10)).ok, true);
+  const grande = 'a'.repeat(200000);
+  const r = N.criar([], { registroId: 'r1', texto: grande }, quando(10));
+  assert.equal(r.ok, true);
+  assert.equal(r.anotacao.texto.length, 200000);
+  assert.equal(N.sanear([r.anotacao])[0].texto.length, 200000);
+  assert.deepEqual(N.criar([], { registroId: 'r1', texto: grande + 'a' }, quando(10)).erros, ['texto-longo']);
 });
 
 test('criar: a mais nova vai primeiro; texto limpo, quebras de linha ficam; lista original intacta', () => {

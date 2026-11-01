@@ -82,6 +82,29 @@
         },
       });
 
+      // Anotações: um documento por anotação em /anotacoes/{id} (só texto). Quem usa é anotacoes-tela.js.
+      var colNotas = F.collection(db, 'anotacoes');
+      var telaNotas = window.RegistrosAnotacoesTela;
+      if (telaNotas && telaNotas.conectar) {
+        telaNotas.conectar({
+          gravar: function (n) {
+            return F.setDoc(F.doc(colNotas, n.id), { registroId: n.registroId, texto: n.texto, t: n.t, editada: n.editada });
+          },
+          apagar: function (id) { return F.deleteDoc(F.doc(colNotas, id)); },
+          observar: function (aoReceber, aoErrar) {
+            return F.onSnapshot(
+              colNotas,
+              { includeMetadataChanges: true },
+              function (snap) {
+                var lista = snap.docs.map(function (d) { var x = d.data(); x.id = d.id; return x; });
+                aoReceber(lista, { doCache: snap.metadata.fromCache });
+              },
+              function (erro) { aoErrar(erro && erro.code); }
+            );
+          },
+        });
+      }
+
       app.conectar({
         gravar: function (reg) {
           return tratar(F.setDoc(F.doc(colecao, reg.id), paraDocumento(reg)));

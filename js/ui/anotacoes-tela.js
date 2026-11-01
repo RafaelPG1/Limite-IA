@@ -1,6 +1,6 @@
 /*
  * anotacoes-tela.js — janela "Anotações" de UM registro (usa as regras de anotacoes.js).
- * Abre pelo botão "Anotações" da coluna Ações de cada linha. Só texto. Fica neste aparelho (localStorage).
+ * Abre pelo botão "Anotações" da coluna Ações de cada linha. Só texto. Guarda neste aparelho (localStorage) e, com o Firebase ligado, sincroniza com a coleção "anotacoes".
  * Para o app.js oferece: abrir(id, nome, origem), contar(id), tirar(id) → notas, devolver(notas).
  * Avisa a página com o evento 'registros:notas' sempre que algo muda.
  */
@@ -40,7 +40,8 @@
 
   const MENSAGEM = {
     'texto-vazio': 'Escreva a anotação.',
-    'texto-longo': 'A anotação é longa demais (máximo ' + N.MAX_TEXTO + ' letras).',
+    'texto-longo': 'A anotação passou de ' + N.MAX_TEXTO.toLocaleString('pt-BR') + ' letras (limite do banco). Divida em duas anotações.',
+    'sem-espaco': 'Não coube no armazenamento deste aparelho (cerca de 5 MB no total). Apague anotações antigas ou divida o texto. O que você escreveu continua aqui.',
     'nao-encontrada': 'Essa anotação não existe mais.',
     'registro-vazio': 'Abra as anotações pelo botão da linha.',
   };
@@ -60,11 +61,60 @@
   function fecharDialogo(d) { if (typeof d.close === 'function') d.close(); else d.removeAttribute('open'); }
 
   function avisar() { window.dispatchEvent(new CustomEvent('registros:notas')); }
-  function persistir() { if (arm) N.salvar(arm, notas); avisar(); }
+  // ---- Nuvem (opcional): a nuvem é a fonte da verdade; este aparelho guarda uma cópia.
+  const CHAVE_MIGRADO = 'registros:anotacoes:nuvem:v1';
+  let nuvemN = null;
+  let ultima = notas;      // o que já foi mandado à nuvem
+  function erroNuvem(e) { if (window.RegistrosApp) window.RegistrosApp.nuvemErro(e && e.code); }
+  function mandar(antes, depois) {
+    if (!nuvemN) return Promise.resolve();
+    const velhas = {}, novas = {}, tarefas = [];
+    antes.forEach(function (a) { velhas[a.id] = a; });
+    depois.forEach(function (a) {
+      novas[a.id] = true;
+      const o = velhas[a.id];
+      if (!o || o.texto !== a.texto || o.editada !== a.editada || o.t !== a.t || o.registroId !== a.registroId) tarefas.push(nuvemN.gravar(a));
+    });
+    antes.forEach(function (a) { if (!novas[a.id]) tarefas.push(nuvemN.apagar(a.id)); });
+    return Promise.all(tarefas).catch(erroNuvem);
+  }
+  function persistir() {
+    const ok = arm ? N.salvar(arm, notas) : true;
+    if (ok) { const antes = ultima; ultima = notas; mandar(antes, notas); }
+    avisar();
+    return ok;
+  }
+  function migrado() { try { return !!arm && arm.getItem(CHAVE_MIGRADO) === '1'; } catch (e) { return false; } }
+  function receber(lista, meta) {
+    if (meta && meta.doCache) return; // espera o servidor: a cópia do aparelho pode estar vazia
+    const daNuvem = N.sanear(lista);
+    if (!migrado()) {
+      // Primeira vez: sobe o que só existe neste aparelho (sem apagar nada) e depois passa a seguir a nuvem.
+      const ids = {};
+      daNuvem.forEach(function (a) { ids[a.id] = true; });
+      const so = notas.filter(function (a) { return !ids[a.id]; });
+      notas = N.sanear(daNuvem.concat(so));
+      ultima = notas;
+      if (arm) N.salvar(arm, notas);
+      Promise.all(so.map(function (a) { return nuvemN.gravar(a); })).then(function () {
+        try { if (arm) arm.setItem(CHAVE_MIGRADO, '1'); } catch (e) { /* sem ação */ }
+      }, erroNuvem);
+    } else {
+      notas = daNuvem;
+      ultima = notas;
+      if (arm) N.salvar(arm, notas);
+    }
+    avisar();
+    if (dlg.open) desenhar();
+  }
+  function conectar(adaptador) {
+    nuvemN = adaptador;
+    adaptador.observar(receber, function (codigo) { erroNuvem({ code: codigo }); nuvemN = null; });
+  }
 
   function atualizarContador() {
     const n = el.texto.value.length;
-    el.contador.textContent = n ? '(' + n + '/' + N.MAX_TEXTO + ')' : '';
+    el.contador.textContent = n ? '(' + n.toLocaleString('pt-BR') + ' letras)' : '';
   }
 
   function desenhar() {
@@ -117,8 +167,9 @@
     const res = editandoId ? N.editar(notas, editandoId, dados, agora) : N.criar(notas, dados, agora);
     if (!res.ok) { mostrarErro(res.erros); return; }
     limparErro();
+    const antes = notas;
     notas = res.lista;
-    persistir();
+    if (!persistir()) { notas = antes; if (arm) N.salvar(arm, notas); avisar(); mostrarErro(['sem-espaco']); return; }
     sairDaEdicao();
     el.texto.value = '';
     atualizarContador();
@@ -164,7 +215,7 @@
       desenhar();
     };
     abrirDialogo(el.conf);
-    el.confCancelar.focus();
+    el.confConfirmar.focus(); // Enter confirma a exclusão
   }
 
   el.fTexto.addEventListener('input', desenhar);
@@ -195,6 +246,7 @@
   dlg.addEventListener('close', function () { if (origem && origem.isConnected) origem.focus(); });
 
   window.RegistrosAnotacoesTela = {
+    conectar: conectar,
     abrir: abrir,
     contar: function (id) { return N.contar(notas, id); },
     // Excluir um registro leva as anotações dele; o app guarda a lista para o "Desfazer".

@@ -85,5 +85,5 @@ npm test
 ## Segurança e limites (resumo)
 
 - A senha é só uma trava: quem lê o Firestore vê o hash, e os registros no Firebase continuam sem proteção. Não guarde nada sensível.
-- Histórico e anotações ficam **só no aparelho** (localStorage) e não sincronizam.
+- O histórico fica **só no aparelho** (localStorage). As anotações sincronizam pelo Firebase (coleção `anotacoes`) e também ficam copiadas no aparelho.
 - Nada deste projeto publica no GitHub ou altera o Firebase sozinho: você publica as regras e os arquivos.

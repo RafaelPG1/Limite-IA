@@ -43,3 +43,10 @@ A chave em `js/firebase-config.js` é pública por natureza do Firebase; não co
   - **Cadastrar ou trocar a senha:** só pelo Console do Firebase (Firestore Database > coleção `acesso` > documento `senha`, com os campos de texto `sal` e `hash`). O site não faz isso.
   - **Limites:** é só uma trava. Quem lê o Firestore enxerga o hash (senha fraca se descobre por tentativa), quem usa as ferramentas do navegador consegue passar, e os registros no Firebase continuam sem proteção.
   - Se o navegador não permitir guardar dados (modo privado, por exemplo), o site abre sem senha, porque não há onde guardar a sessão.
+
+## Anotações na nuvem
+
+- Cada anotação é um documento em `anotacoes/{id}` com **4 campos**: `registroId` (texto), `texto` (texto, de 1 a 200 000 letras), `t` (número, quando foi criada) e `editada` (número). Nada além disso é aceito pelas regras.
+- **Publique o `firebase/firestore.rules` novo** antes de abrir a versão nova do site. Sem isso o site mostra "O banco bloqueou o acesso" e as anotações continuam salvas só no aparelho (nada se perde).
+- As regras também: não deixam **listar** a coleção `acesso` (só ler o documento `senha`), não deixam mudar `registroId` nem `t` de uma anotação existente e continuam bloqueando qualquer escrita em `acesso`.
+- **Limite honesto das regras:** sem login, qualquer pessoa que tenha o endereço do site e a configuração pública do Firebase consegue **ler e apagar** anotações e registros. As regras só impedem dados fora do formato. Para proteger a leitura de verdade seria preciso login (Firebase Authentication), que ainda não existe. **Não cole tokens, senhas ou chaves nas anotações.**
