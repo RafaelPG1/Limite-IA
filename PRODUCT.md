@@ -7,7 +7,7 @@
 web
 
 ## Stack
-Static HTML, CSS and plain JavaScript, no build step and no dependencies. Hosted as static files (GitHub Pages or Cloudflare Pages). Installable as a PWA on Android (fullscreen).
+Static HTML, CSS and plain JavaScript, no build step and no dependencies. Hosted as static files (GitHub Pages or Cloudflare Pages). Installable as a PWA on Android (standalone, system bars visible in the app's background color).
 
 ## Users
 One person (the owner) and people they share the password with, watching a handful of records through the day on a phone and a desktop, usually with the tab left open. Writes to the product in Portuguese (Brazil), uses the dark theme.

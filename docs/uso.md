@@ -42,6 +42,7 @@ Cada linha tem, na coluna **Ações**, o botão **Anotações** (com um número 
 
 - **Escrever:** digite e toque em **Salvar anotação**. A mais nova fica em cima, com data e hora.
 - **Buscar:** aparece quando há mais de uma anotação; acha uma palavra (sem acento e sem maiúscula).
+- **Copiar:** em cada anotação, copia o texto inteiro para a área de transferência (o botão mostra "Copiado!").
 - **Editar / Excluir:** em cada anotação. Editar marca "editada"; Excluir pede confirmação.
 - **Excluir o registro leva as anotações dele**; se você clicar em **Desfazer**, elas voltam junto. A confirmação de excluir avisa quando há anotações.
 - **Sincronizam pelo Firebase** (coleção `anotacoes`, um documento por anotação, só texto): o que você escreve no celular aparece no notebook e vice-versa. Uma cópia fica no aparelho (localStorage, chave `registros:anotacoes:v2`) para funcionar sem internet. Na primeira abertura depois da atualização, as anotações que só existiam no aparelho sobem para o Firebase (nada é apagado). Máximo de 300. **Precisa das regras novas publicadas** (veja `docs/firebase.md`). As anotações antigas "por projeto" (versão anterior) **não foram migradas**: continuam guardadas no navegador, mas não aparecem.

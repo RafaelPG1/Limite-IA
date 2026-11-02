@@ -128,11 +128,13 @@
       topo.appendChild(criar('span', 'not-quando', quando(n.t) + (n.editada ? ' · editada ' + quando(n.editada) : '')));
       li.appendChild(topo);
       const acoes = criar('div', 'not-acoes');
-      const bEditar = criar('button', 'botao botao-sutil hist-apagar', 'Editar');
+      const bCopiar = criar('button', 'botao botao-sutil not-botao', 'Copiar');
+      bCopiar.type = 'button'; bCopiar.dataset.acao = 'copiar'; bCopiar.setAttribute('aria-label', 'Copiar a anotação inteira de ' + quando(n.t));
+      const bEditar = criar('button', 'botao botao-sutil not-botao', 'Editar');
       bEditar.type = 'button'; bEditar.dataset.acao = 'editar'; bEditar.setAttribute('aria-label', 'Editar anotação de ' + quando(n.t));
       const bExcluir = criar('button', 'botao botao-sutil hist-apagar', 'Excluir');
       bExcluir.type = 'button'; bExcluir.dataset.acao = 'excluir'; bExcluir.setAttribute('aria-label', 'Excluir anotação de ' + quando(n.t));
-      acoes.appendChild(bEditar); acoes.appendChild(bExcluir);
+      acoes.appendChild(bCopiar); acoes.appendChild(bEditar); acoes.appendChild(bExcluir);
       li.appendChild(acoes);
       li.appendChild(criar('p', 'not-texto', n.texto));
       el.lista.appendChild(li);
@@ -188,7 +190,12 @@
     if (!b) return;
     const nota = notas.find(function (n) { return n.id === b.closest('li').dataset.id; });
     if (!nota) return;
-    if (b.dataset.acao === 'editar') {
+    if (b.dataset.acao === 'copiar') {
+      copiar(nota.texto).then(function (deu) {
+        b.textContent = deu ? 'Copiado!' : 'Não copiou';
+        setTimeout(function () { if (b.isConnected) b.textContent = 'Copiar'; }, 1800);
+      });
+    } else if (b.dataset.acao === 'editar') {
       editandoId = nota.id;
       el.texto.value = nota.texto;
       el.salvar.textContent = 'Salvar alterações';
@@ -200,6 +207,24 @@
       pedirExclusao(nota);
     }
   });
+
+  // Copia o texto inteiro (sem cortar nada). Usa a área de transferência do navegador; se ela
+  // não estiver disponível (página sem HTTPS), cai num campo temporário.
+  function copiar(texto) {
+    function plano() {
+      const t = document.createElement('textarea');
+      t.value = texto; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(t); t.select();
+      let deu = false;
+      try { deu = document.execCommand('copy'); } catch (e) { deu = false; }
+      t.remove();
+      return deu;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(texto).then(function () { return true; }, function () { return plano(); });
+    }
+    return Promise.resolve(plano());
+  }
 
   function pedirExclusao(nota) {
     const resumo = nota.texto.length > 80 ? nota.texto.slice(0, 80) + '…' : nota.texto;

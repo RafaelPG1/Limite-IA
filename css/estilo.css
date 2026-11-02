@@ -829,6 +829,8 @@ tr.chegou td { animation: pulso-verde 1.8s var(--ease); }
 .hist-apagar { grid-column: 3; grid-row: 1; align-self: start; min-height: 2rem; padding: 0.25rem 0.5rem; color: var(--tinta-2); }
 .hist-apagar svg { width: 1rem; height: 1rem; }
 .hist-apagar:hover { background: var(--perigo-fundo); color: var(--perigo); }
+.not-botao { min-height: 2rem; padding: 0.25rem 0.5rem; color: var(--tinta-2); }
+.not-botao:hover { color: var(--tinta); }
 .modal-pequeno { width: min(26rem, calc(100vw - 2rem)); }
 .conf-texto { margin: 0; padding: 0.25rem 1.25rem 1.25rem; color: var(--tinta-2); line-height: 1.5; }
 .modal-rodape-direita { justify-content: flex-end; }
