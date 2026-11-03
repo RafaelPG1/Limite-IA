@@ -962,8 +962,19 @@
     el.syncTexto.textContent = texto;
   }
 
+  let ultimoMeta = null;   // a última situação conhecida da nuvem, para reavaliar o status depois
+  let timerStatus = null;
   function statusPorMeta(meta) {
-    if (Date.now() < statusTravadoAte) return;
+    if (meta) ultimoMeta = meta;
+    else if (!ultimoMeta) return;
+    meta = ultimoMeta;
+    if (Date.now() < statusTravadoAte) {
+      // Um erro está à mostra: quando ele vencer, o status volta a refletir a situação real
+      // (antes, a bolinha verde só voltava na próxima mudança, e às vezes nunca).
+      clearTimeout(timerStatus);
+      if (isFinite(statusTravadoAte)) timerStatus = setTimeout(function () { statusPorMeta(null); }, statusTravadoAte - Date.now() + 50);
+      return;
+    }
     if (meta.doCache && !jaConectou) definirStatus('espera', 'Conectando à nuvem…');
     else if (meta.doCache) definirStatus('aviso', 'Sem conexão. Alterações ficam salvas aqui e seguem quando voltar. Com internet ok, confira se um bloqueador de anúncios está bloqueando o Firebase.');
     else if (meta.pendente) definirStatus('espera', 'Enviando alterações…');
@@ -992,6 +1003,7 @@
     nuvemFalhou: function () {
       definirStatus('aviso', 'Nuvem indisponível. Salvando só neste aparelho.');
     },
+    reavaliarStatus: function () { if (nuvem) statusPorMeta(null); },
     nuvemErro: function (codigo) {
       if (codigo === 'permission-denied') {
         definirStatus('erro', 'O banco bloqueou o acesso. Publique as regras do Firestore (veja o LEIA-ME).');
@@ -1024,10 +1036,12 @@
   verificarHorarios();
   iniciado = true;
 
+  // Voltou a internet ou o app voltou para a frente: confere de novo o que a bolinha deve mostrar.
+  window.addEventListener('online', function () { window.RegistrosApp.reavaliarStatus(); });
   setInterval(verificarHorarios, 1000);
   // Abas em segundo plano podem pausar o relógio: confere assim que a página volta.
   document.addEventListener('visibilitychange', function () {
-    if (!document.hidden) verificarHorarios();
+    if (!document.hidden) { verificarHorarios(); window.RegistrosApp.reavaliarStatus(); }
   });
   window.addEventListener('pageshow', verificarHorarios);
 
